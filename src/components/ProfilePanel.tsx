@@ -58,7 +58,7 @@ export default function ProfilePanel() {
                 className="skill-bar-fill"
                 initial={{ width: 0 }}
                 animate={{ width: `${skill.level}%` }}
-                transition={{ duration: 0.8, delay: i * 0.08, ease: "easeOut" }}
+                transition={{ duration: 1.0, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
               />
             </div>
           </div>
@@ -79,7 +79,7 @@ export default function ProfilePanel() {
               className="w-8 h-8 border border-accent/35 flex items-center justify-center text-[11px] text-accent icon-clip hover:bg-accent/10 transition-colors"
               aria-label={key}
               whileHover={{ scale: 1.1, borderColor: "rgba(0,229,255,0.6)" }}
-              transition={{ duration: 0.15 }}
+              transition={{ type: "spring", stiffness: 400, damping: 20 }}
             >
               {contactLabels[key] ?? key.slice(0, 2).toUpperCase()}
             </motion.a>

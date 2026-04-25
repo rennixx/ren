@@ -3,22 +3,26 @@
 import { useEffect, useState } from "react";
 import profileData from "@/data/profile.json";
 
-function useCounter(target: number, duration: number = 800) {
+function useCounter(target: number, duration: number = 1200) {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    let start = 0;
-    const step = target / (duration / 16);
-    const timer = setInterval(() => {
-      start += step;
-      if (start >= target) {
-        setCount(target);
-        clearInterval(timer);
-      } else {
-        setCount(Math.floor(start));
+    const startTime = performance.now();
+    let raf: number;
+
+    const tick = (now: number) => {
+      const elapsed = now - startTime;
+      const t = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const current = Math.round(eased * target);
+      setCount(current);
+      if (t < 1) {
+        raf = requestAnimationFrame(tick);
       }
-    }, 16);
-    return () => clearInterval(timer);
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
   }, [target, duration]);
 
   return count;

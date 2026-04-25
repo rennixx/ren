@@ -28,30 +28,32 @@ export default function BootSequence({ onComplete }: BootSequenceProps) {
   useEffect(() => {
     if (phase !== "progress") return;
 
-    const statusTimings = [0, 600, 1200, 1800, 2400];
+    const statusTimings = [0, 700, 1400, 2100, 2800];
     statusTimings.forEach((delay, i) => {
       setTimeout(() => setStatusIndex(i), delay);
     });
 
     const interval = setInterval(() => {
       setProgress((prev) => {
-        const next = prev + Math.random() * 12 + 4;
+        const remaining = 100 - prev;
+        const increment = remaining * 0.08 + 1;
+        const next = prev + increment;
         if (next >= 100) {
           clearInterval(interval);
           return 100;
         }
         return next;
       });
-    }, 200);
+    }, 250);
 
     const finishTimer = setTimeout(() => {
       setProgress(100);
       setStatusIndex(4);
-    }, 2800);
+    }, 3200);
 
     const glitchTimer = setTimeout(() => {
       setPhase("glitch");
-    }, 3000);
+    }, 3400);
 
     return () => {
       clearInterval(interval);
@@ -65,7 +67,7 @@ export default function BootSequence({ onComplete }: BootSequenceProps) {
 
     const revealTimer = setTimeout(() => {
       setPhase("reveal");
-    }, 500);
+    }, 600);
 
     return () => clearTimeout(revealTimer);
   }, [phase]);
@@ -73,8 +75,8 @@ export default function BootSequence({ onComplete }: BootSequenceProps) {
   useEffect(() => {
     if (phase !== "reveal") return;
 
-    overlayControls.start({ opacity: 0, transition: { duration: 0.8 } });
-    const completeTimer = setTimeout(triggerComplete, 900);
+    overlayControls.start({ opacity: 0, transition: { duration: 1.0, ease: [0.16, 1, 0.3, 1] } });
+    const completeTimer = setTimeout(triggerComplete, 1100);
     return () => clearTimeout(completeTimer);
   }, [phase, overlayControls, triggerComplete]);
 
@@ -100,7 +102,7 @@ export default function BootSequence({ onComplete }: BootSequenceProps) {
             className="h-full bg-accent rounded-[1px]"
             style={{ boxShadow: "0 0 8px #00e5ff" }}
             animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
           />
         </div>
         <div className="text-[9px] tracking-[3px] uppercase text-accent/50">
