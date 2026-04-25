@@ -14,9 +14,25 @@ export default function ProjectGrid() {
           href={githubUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="btn-clip px-5 py-2.5 border border-accent text-accent text-xs uppercase tracking-[2px] cursor-pointer shadow-[0_0_10px_rgba(0,229,255,0.15),inset_0_0_10px_rgba(0,229,255,0.05)] hover:shadow-[0_0_16px_rgba(0,229,255,0.25),inset_0_0_16px_rgba(0,229,255,0.1)] hover:bg-accent/[0.06] transition-all"
+          className="relative inline-flex items-center justify-center text-accent text-xs uppercase tracking-[2px] cursor-pointer transition-all group"
+          style={{ padding: "10px 28px" }}
         >
-          View on GitHub
+          <svg
+            className="absolute inset-0 w-full h-full"
+            viewBox="0 0 200 44"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <polygon
+              points="10,0 190,0 200,10 200,34 190,44 10,44 0,34 0,10"
+              fill="rgba(0,229,255,0.02)"
+              stroke="#00e5ff"
+              strokeWidth="1.5"
+            />
+          </svg>
+          <span className="relative z-10 group-hover:text-white transition-colors">
+            View on GitHub
+          </span>
         </a>
       </div>
     </div>
