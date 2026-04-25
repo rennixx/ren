@@ -9,7 +9,7 @@ export default function ProjectGrid() {
       <div className="panel-clip panel-border w-full h-full p-3.5 relative">
         <div className="flex justify-between items-center mb-2.5">
           <span className="text-[8px] text-accent/60 tracking-[2px] uppercase">
-            // Projects.Array
+            {"// Projects.Array"}
           </span>
           <span className="text-[8px] text-accent/50 font-mono">
             [0..{projects.length - 1}]
