@@ -2,7 +2,7 @@
   "name": "Ren",
   "title": "Software Engineer",
   "bio": "Full-stack developer focused on building performant, visually engaging applications with modern web technologies.",
-  "avatar": "/images/avatar.png",
+  "avatar": "/images/avatar.jpg",
 
   "skills": [
     { "name": "React", "level": 90 },

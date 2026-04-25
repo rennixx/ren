@@ -1,3 +1,6 @@
+import Image from "next/image";
+import profileData from "@/data/profile.json";
+
 export default function HexAvatar() {
   return (
     <div className="relative w-[72px] h-[72px] mx-auto mb-3.5">
@@ -22,9 +25,19 @@ export default function HexAvatar() {
           strokeWidth="0.5"
           strokeDasharray="3,3"
         />
+        <clipPath id="hex-clip">
+          <polygon points="36,8 62,24 62,48 36,64 10,48 10,24" />
+        </clipPath>
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-2xl text-accent">?</span>
+        <Image
+          src={profileData.avatar}
+          alt="Avatar"
+          width={54}
+          height={54}
+          className="object-cover"
+          style={{ clipPath: "polygon(50% 4%, 93% 25%, 93% 75%, 50% 96%, 7% 75%, 7% 25%)" }}
+        />
       </div>
     </div>
   );
