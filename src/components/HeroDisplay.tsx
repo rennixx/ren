@@ -95,15 +95,6 @@ export default function HeroDisplay() {
         <p className="text-[14px] text-text-secondary text-center max-w-[300px] leading-relaxed mb-3.5">
           {title} crafting modern web experiences with clean code.
         </p>
-
-        <div className="flex gap-2.5">
-          <a href="#projects" className="btn-clip px-5 py-2 border border-accent text-accent text-xs uppercase tracking-[2px] cursor-pointer shadow-[0_0_10px_rgba(0,229,255,0.15),inset_0_0_10px_rgba(0,229,255,0.05)] hover:shadow-[0_0_16px_rgba(0,229,255,0.25),inset_0_0_16px_rgba(0,229,255,0.1)] transition-shadow">
-            View Work
-          </a>
-          <a href="#contact" className="btn-clip px-5 py-2 border border-accent/40 text-accent text-xs uppercase tracking-[2px] cursor-pointer hover:border-accent/70 transition-colors">
-            Contact
-          </a>
-        </div>
       </div>
     </div>
   );
