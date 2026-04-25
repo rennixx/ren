@@ -30,8 +30,21 @@ function useCounter(target: number, duration: number = 1200) {
 
 export default function StatsPanel() {
   const { stats, skills } = profileData;
-  const projectCount = useCounter(stats.projectCount);
+  const [repoCount, setRepoCount] = useState(stats.projectCount);
   const stackCount = useCounter(stats.stackCount);
+
+  useEffect(() => {
+    fetch("https://api.github.com/users/rennixx")
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data.public_repos === "number") {
+          setRepoCount(data.public_repos);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const projectCount = useCounter(repoCount);
   const projectHex = "0x" + projectCount.toString(16).toUpperCase().padStart(2, "0");
 
   return (
