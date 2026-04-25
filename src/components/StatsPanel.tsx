@@ -38,7 +38,7 @@ export default function StatsPanel() {
     <div className="panel-clip panel-border h-full p-4 flex flex-col gap-2">
       <div className="flex justify-between items-center mb-1">
         <span className="text-[11px] text-accent/70 tracking-[2px] uppercase">
-          {"// System.Info"}
+          {"SYSTEM.INFO"}
         </span>
         <span className="text-[10px] text-accent/50">0xF2A1</span>
       </div>

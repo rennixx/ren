@@ -79,7 +79,7 @@ export default function HeroDisplay() {
         </div>
 
         <div className="absolute top-3 left-1/2 -translate-x-1/2 text-[11px] text-accent/60 tracking-[2px] uppercase">
-          {"// Main.Display"}
+          {"MAIN.DISPLAY"}
         </div>
 
         {/* Rotating rings */}

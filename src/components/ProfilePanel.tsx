@@ -32,7 +32,7 @@ export default function ProfilePanel() {
     <div className="panel-clip panel-border h-full p-5 flex flex-col">
       <div className="flex justify-between items-center mb-3.5">
         <span className="text-[11px] text-accent/60 tracking-[2px] uppercase">
-          {"// User.Profile"}
+          {"USER.PROFILE"}
         </span>
         <span className="text-[10px] text-accent/50 font-mono">0x7A3F</span>
       </div>
@@ -57,7 +57,7 @@ export default function ProfilePanel() {
       </p>
 
       <div className="text-[11px] text-accent/60 tracking-[2px] uppercase mb-2">
-        {"// Tech Stack"}
+        {"TECH STACK"}
       </div>
 
       <div className="flex flex-col gap-1.5">
