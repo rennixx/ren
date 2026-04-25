@@ -72,6 +72,7 @@
     box-shadow:
       inset 0 0 30px rgba(0, 229, 255, 0.02),
       0 0 15px rgba(0, 229, 255, 0.04);
+    animation: panel-glow-pulse 4s ease-in-out infinite;
   }
 
   .stat-box {
@@ -133,6 +134,77 @@
       transform: scaleX(1);
       opacity: 0;
     }
+  }
+
+  @keyframes panel-glow-pulse {
+    0%, 100% {
+      box-shadow:
+        inset 0 0 30px rgba(0, 229, 255, 0.02),
+        0 0 15px rgba(0, 229, 255, 0.04);
+    }
+    50% {
+      box-shadow:
+        inset 0 0 30px rgba(0, 229, 255, 0.04),
+        0 0 20px rgba(0, 229, 255, 0.07);
+    }
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  @keyframes circuit-travel {
+    0% { transform: translateX(0); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateX(16px); opacity: 0; }
+  }
+
+  @keyframes circuit-travel-v {
+    0% { transform: translateY(0); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(16px); opacity: 0; }
+  }
+
+  @keyframes float-particle {
+    0% { transform: translate(0, 0); }
+    25% { transform: translate(10px, -15px); }
+    50% { transform: translate(-5px, -25px); }
+    75% { transform: translate(15px, -10px); }
+    100% { transform: translate(0, 0); }
+  }
+
+  .circuit-dot-travel {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: #00e5ff;
+    border-radius: 50%;
+    box-shadow: 0 0 4px #00e5ff;
+  }
+
+  .circuit-dot-travel.horizontal {
+    animation: circuit-travel 2s ease-in-out infinite;
+  }
+
+  .circuit-dot-travel.vertical {
+    animation: circuit-travel-v 2s ease-in-out infinite;
+  }
+
+  .uptime-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .uptime-shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(0, 229, 255, 0.3), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 3s ease-in-out infinite;
   }
 
   /* Tablet: 2-column layout */

@@ -8,6 +8,7 @@ import HeroDisplay from "@/components/HeroDisplay";
 import ProjectGrid from "@/components/ProjectGrid";
 import StatsPanel from "@/components/StatsPanel";
 import CircuitConnector from "@/components/CircuitConnector";
+import Particles from "@/components/Particles";
 
 const containerVariants = {
   hidden: {},
@@ -53,6 +54,7 @@ export default function Home() {
         }}
         aria-hidden="true"
       />
+      <Particles />
 
       {isBooted && (
         <motion.div className="relative z-[1] grid grid-cols-1 md:grid-cols-[1fr_240px] lg:grid-cols-[300px_1fr_240px] md:grid-rows-[auto_1fr_1fr] lg:grid-rows-2 gap-2.5 p-3.5 px-[18px] h-screen overflow-auto lg:overflow-hidden" variants={containerVariants} initial="hidden" animate="visible">
