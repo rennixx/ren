@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
+import BootSequence from "@/components/BootSequence";
 import ProfilePanel from "@/components/ProfilePanel";
 import HeroDisplay from "@/components/HeroDisplay";
 import ProjectGrid from "@/components/ProjectGrid";
@@ -11,23 +13,27 @@ const containerVariants = {
   hidden: {},
   visible: {
     transition: {
-      staggerChildren: 0.15,
+      staggerChildren: 0.12,
     },
   },
 };
 
 const panelVariants = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { opacity: 0, scale: 0.95 },
   visible: {
     opacity: 1,
-    y: 0,
+    scale: 1,
     transition: { duration: 0.5, ease: "easeOut" as const },
   },
 };
 
 export default function Home() {
+  const [isBooted, setIsBooted] = useState(false);
+
   return (
     <main className="h-screen overflow-hidden bg-base relative">
+      {!isBooted && <BootSequence onComplete={() => setIsBooted(true)} />}
+
       {/* Background grid pattern */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -48,41 +54,43 @@ export default function Home() {
         aria-hidden="true"
       />
 
-      <motion.div className="relative z-[1] grid grid-cols-1 md:grid-cols-[1fr_240px] lg:grid-cols-[300px_1fr_240px] md:grid-rows-[auto_1fr_1fr] lg:grid-rows-2 gap-2.5 p-3.5 px-[18px] h-screen overflow-auto lg:overflow-hidden" variants={containerVariants} initial="hidden" animate="visible">
-        {/* Circuit connectors */}
-        <CircuitConnector
-          direction="horizontal"
-          className="top-1/2 left-[262px]"
-        />
-        <CircuitConnector
-          direction="horizontal"
-          className="top-[35%] right-[208px]"
-        />
-        <CircuitConnector
-          direction="vertical"
-          className="top-1/2 left-1/2 -translate-x-1/2"
-        />
+      {isBooted && (
+        <motion.div className="relative z-[1] grid grid-cols-1 md:grid-cols-[1fr_240px] lg:grid-cols-[300px_1fr_240px] md:grid-rows-[auto_1fr_1fr] lg:grid-rows-2 gap-2.5 p-3.5 px-[18px] h-screen overflow-auto lg:overflow-hidden" variants={containerVariants} initial="hidden" animate="visible">
+          {/* Circuit connectors */}
+          <CircuitConnector
+            direction="horizontal"
+            className="top-1/2 left-[262px]"
+          />
+          <CircuitConnector
+            direction="horizontal"
+            className="top-[35%] right-[208px]"
+          />
+          <CircuitConnector
+            direction="vertical"
+            className="top-1/2 left-1/2 -translate-x-1/2"
+          />
 
-        {/* Left: Profile (spans both rows) */}
-        <motion.section className="row-span-2" aria-label="Profile" variants={panelVariants}>
-          <ProfilePanel />
-        </motion.section>
+          {/* Left: Profile (spans both rows) */}
+          <motion.section className="row-span-2" aria-label="Profile" variants={panelVariants}>
+            <ProfilePanel />
+          </motion.section>
 
-        {/* Center top: Hero */}
-        <motion.section aria-label="Hero" variants={panelVariants}>
-          <HeroDisplay />
-        </motion.section>
+          {/* Center top: Hero */}
+          <motion.section aria-label="Hero" variants={panelVariants}>
+            <HeroDisplay />
+          </motion.section>
 
-        {/* Right: Stats (spans both rows) */}
-        <motion.aside className="row-span-2" aria-label="System Stats" variants={panelVariants}>
-          <StatsPanel />
-        </motion.aside>
+          {/* Right: Stats (spans both rows) */}
+          <motion.aside className="row-span-2" aria-label="System Stats" variants={panelVariants}>
+            <StatsPanel />
+          </motion.aside>
 
-        {/* Center bottom: Projects */}
-        <motion.section aria-label="Projects" variants={panelVariants}>
-          <ProjectGrid />
-        </motion.section>
-      </motion.div>
+          {/* Center bottom: Projects */}
+          <motion.section aria-label="Projects" variants={panelVariants}>
+            <ProjectGrid />
+          </motion.section>
+        </motion.div>
+      )}
     </main>
   );
 }
