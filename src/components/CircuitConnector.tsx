@@ -17,7 +17,9 @@ export default function CircuitConnector({
             "linear-gradient(90deg, rgba(0,229,255,0.4), transparent)",
         }}
         aria-hidden="true"
-      />
+      >
+        <div className="circuit-dot-travel horizontal" />
+      </div>
     );
   }
 
@@ -30,6 +32,8 @@ export default function CircuitConnector({
           "linear-gradient(180deg, rgba(0,229,255,0.4), transparent)",
       }}
       aria-hidden="true"
-    />
+    >
+      <div className="circuit-dot-travel vertical" />
+    </div>
   );
 }
