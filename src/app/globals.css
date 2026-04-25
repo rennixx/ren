@@ -1,26 +1,131 @@
 @import "tailwindcss";
+@config "../../tailwind.config.ts";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+    background-color: #060610;
+    color: #a0b0c0;
+    font-family: "Courier New", Consolas, Monaco, monospace;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .panel-clip {
+    clip-path: polygon(
+      12px 0,
+      calc(100% - 12px) 0,
+      100% 12px,
+      100% calc(100% - 12px),
+      calc(100% - 12px) 100%,
+      12px 100%,
+      0 calc(100% - 12px),
+      0 12px
+    );
+  }
+
+  .card-clip {
+    clip-path: polygon(
+      8px 0,
+      calc(100% - 8px) 0,
+      100% 8px,
+      100% calc(100% - 8px),
+      calc(100% - 8px) 100%,
+      8px 100%,
+      0 calc(100% - 8px),
+      0 8px
+    );
+  }
+
+  .btn-clip {
+    clip-path: polygon(
+      6px 0,
+      calc(100% - 6px) 0,
+      100% 6px,
+      100% calc(100% - 6px),
+      calc(100% - 6px) 100%,
+      6px 100%,
+      0 calc(100% - 6px),
+      0 6px
+    );
+  }
+
+  .icon-clip {
+    clip-path: polygon(
+      4px 0,
+      calc(100% - 4px) 0,
+      100% 4px,
+      100% calc(100% - 4px),
+      calc(100% - 4px) 100%,
+      4px 100%,
+      0 calc(100% - 4px),
+      0 4px
+    );
+  }
+
+  .panel-border {
+    border: 1px solid rgba(0, 229, 255, 0.15);
+    background: rgba(0, 229, 255, 0.02);
+    box-shadow:
+      inset 0 0 30px rgba(0, 229, 255, 0.02),
+      0 0 15px rgba(0, 229, 255, 0.04);
+  }
+
+  .stat-box {
+    border: 1px solid rgba(0, 229, 255, 0.15);
+    background: rgba(0, 229, 255, 0.01);
+    padding: 10px;
+  }
+
+  .skill-bar-track {
+    height: 3px;
+    background: rgba(0, 229, 255, 0.1);
+    border-radius: 1px;
+  }
+
+  .skill-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00e5ff, rgba(0, 229, 255, 0.3));
+    border-radius: 1px;
+    box-shadow: 0 0 4px rgba(0, 229, 255, 0.3);
+  }
+
+  .circuit-separator {
+    display: flex;
+    align-items: center;
+  }
+
+  .circuit-separator::before,
+  .circuit-separator::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(0, 229, 255, 0.25),
+      transparent
+    );
+  }
+
+  .circuit-dot {
+    width: 5px;
+    height: 5px;
+    border: 1px solid #00e5ff;
+    transform: rotate(45deg);
+    margin: 0 6px;
+    flex-shrink: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
