@@ -1,3 +1,6 @@
+"use client";
+
+import { motion } from "framer-motion";
 import HexAvatar from "./HexAvatar";
 import profileData from "@/data/profile.json";
 
@@ -44,16 +47,18 @@ export default function ProfilePanel() {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        {skills.map((skill) => (
+        {skills.map((skill, i) => (
           <div key={skill.name}>
             <div className="flex justify-between text-xs text-text-secondary mb-0.5">
               <span>{skill.name}</span>
               <span className="text-accent">{skill.level}%</span>
             </div>
             <div className="skill-bar-track">
-              <div
+              <motion.div
                 className="skill-bar-fill"
-                style={{ width: `${skill.level}%` }}
+                initial={{ width: 0 }}
+                animate={{ width: `${skill.level}%` }}
+                transition={{ duration: 0.8, delay: i * 0.08, ease: "easeOut" }}
               />
             </div>
           </div>
@@ -66,16 +71,18 @@ export default function ProfilePanel() {
         </div>
         <div className="flex justify-center gap-1.5">
           {Object.entries(contact).map(([key, url]) => (
-            <a
+            <motion.a
               key={key}
               href={url}
               target="_blank"
               rel="noopener noreferrer"
               className="w-8 h-8 border border-accent/35 flex items-center justify-center text-[11px] text-accent icon-clip hover:bg-accent/10 transition-colors"
               aria-label={key}
+              whileHover={{ scale: 1.1, borderColor: "rgba(0,229,255,0.6)" }}
+              transition={{ duration: 0.15 }}
             >
               {contactLabels[key] ?? key.slice(0, 2).toUpperCase()}
-            </a>
+            </motion.a>
           ))}
         </div>
       </div>
