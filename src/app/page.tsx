@@ -1,9 +1,30 @@
+"use client";
+
+import { motion } from "framer-motion";
 import TopNav from "@/components/TopNav";
 import ProfilePanel from "@/components/ProfilePanel";
 import HeroDisplay from "@/components/HeroDisplay";
 import ProjectGrid from "@/components/ProjectGrid";
 import StatsPanel from "@/components/StatsPanel";
 import CircuitConnector from "@/components/CircuitConnector";
+
+const containerVariants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.15,
+    },
+  },
+};
+
+const panelVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: "easeOut" as const },
+  },
+};
 
 export default function Home() {
   return (
@@ -30,7 +51,7 @@ export default function Home() {
 
       <TopNav />
 
-      <div className="relative z-[1] grid grid-cols-[260px_1fr_200px] grid-rows-2 gap-2.5 p-3.5 px-[18px] h-[calc(100vh-38px)]">
+      <motion.div className="relative z-[1] grid grid-cols-[260px_1fr_200px] grid-rows-2 gap-2.5 p-3.5 px-[18px] h-[calc(100vh-38px)]" variants={containerVariants} initial="hidden" animate="visible">
         {/* Circuit connectors */}
         <CircuitConnector
           direction="horizontal"
@@ -46,25 +67,25 @@ export default function Home() {
         />
 
         {/* Left: Profile (spans both rows) */}
-        <section className="row-span-2" aria-label="Profile">
+        <motion.section className="row-span-2" aria-label="Profile" variants={panelVariants}>
           <ProfilePanel />
-        </section>
+        </motion.section>
 
         {/* Center top: Hero */}
-        <section aria-label="Hero">
+        <motion.section aria-label="Hero" variants={panelVariants}>
           <HeroDisplay />
-        </section>
+        </motion.section>
 
         {/* Right: Stats (spans both rows) */}
-        <aside className="row-span-2" aria-label="System Stats">
+        <motion.aside className="row-span-2" aria-label="System Stats" variants={panelVariants}>
           <StatsPanel />
-        </aside>
+        </motion.aside>
 
         {/* Center bottom: Projects */}
-        <section aria-label="Projects">
+        <motion.section aria-label="Projects" variants={panelVariants}>
           <ProjectGrid />
-        </section>
-      </div>
+        </motion.section>
+      </motion.div>
     </main>
   );
 }
