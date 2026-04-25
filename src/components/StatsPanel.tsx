@@ -1,8 +1,34 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import profileData from "@/data/profile.json";
+
+function useCounter(target: number, duration: number = 800) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let start = 0;
+    const step = target / (duration / 16);
+    const timer = setInterval(() => {
+      start += step;
+      if (start >= target) {
+        setCount(target);
+        clearInterval(timer);
+      } else {
+        setCount(Math.floor(start));
+      }
+    }, 16);
+    return () => clearInterval(timer);
+  }, [target, duration]);
+
+  return count;
+}
 
 export default function StatsPanel() {
   const { stats, skills } = profileData;
-  const projectHex = "0x" + stats.projectCount.toString(16).toUpperCase().padStart(2, "0");
+  const projectCount = useCounter(stats.projectCount);
+  const stackCount = useCounter(stats.stackCount);
+  const projectHex = "0x" + projectCount.toString(16).toUpperCase().padStart(2, "0");
 
   return (
     <div className="panel-clip panel-border h-full p-4 flex flex-col gap-2">
@@ -43,7 +69,7 @@ export default function StatsPanel() {
           {projectHex}
         </div>
         <div className="text-xs text-text-tertiary mt-0.5">
-          {stats.projectCount} repositories
+          {projectCount} repositories
         </div>
         <div className="flex gap-0.5 items-end mt-1.5 h-4">
           <div className="w-1.5 bg-accent/40" style={{ height: "40%" }} />
@@ -104,7 +130,7 @@ export default function StatsPanel() {
           Tech Stack
         </div>
         <div className="text-[28px] text-accent font-bold">
-          {stats.stackCount}
+          {stackCount}
           <span className="text-sm text-text-tertiary">+ </span>
           <span className="text-[13px] text-text-tertiary">tools</span>
         </div>
@@ -118,7 +144,7 @@ export default function StatsPanel() {
             </span>
           ))}
           <span className="text-[10px] text-accent/70 px-1.5 py-0.5 border border-accent/20">
-            +{stats.stackCount - 3}
+            +{stackCount - 3}
           </span>
         </div>
       </div>
@@ -132,7 +158,7 @@ export default function StatsPanel() {
           <span className="text-base text-accent font-mono font-bold">
             {stats.uptime}
           </span>
-          <div className="flex gap-px">
+          <div className="flex gap-px uptime-shimmer">
             {[1, 2, 3, 4, 5].map((i) => (
               <div
                 key={i}
