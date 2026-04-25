@@ -1,7 +1,52 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import profileData from "@/data/profile.json";
 
 export default function HeroDisplay() {
   const { name, title } = profileData;
+  const nameText = name.toUpperCase();
+  const subtitleText = `${title} crafting modern web experiences with clean code.`;
+
+  const [typedName, setTypedName] = useState("");
+  const [typedSub, setTypedSub] = useState("");
+  const [nameDone, setNameDone] = useState(false);
+  const [cursorVisible, setCursorVisible] = useState(true);
+
+  useEffect(() => {
+    let i = 0;
+    const timer = setInterval(() => {
+      if (i < nameText.length) {
+        setTypedName(nameText.slice(0, i + 1));
+        i++;
+      } else {
+        clearInterval(timer);
+        setNameDone(true);
+      }
+    }, 80);
+    return () => clearInterval(timer);
+  }, [nameText]);
+
+  useEffect(() => {
+    if (!nameDone) return;
+    let i = 0;
+    const timer = setInterval(() => {
+      if (i < subtitleText.length) {
+        setTypedSub(subtitleText.slice(0, i + 1));
+        i++;
+      } else {
+        clearInterval(timer);
+      }
+    }, 30);
+    return () => clearInterval(timer);
+  }, [nameDone, subtitleText]);
+
+  useEffect(() => {
+    const blink = setInterval(() => {
+      setCursorVisible((v) => !v);
+    }, 530);
+    return () => clearInterval(blink);
+  }, []);
 
   return (
     <div className="relative flex items-center justify-center h-full">
@@ -79,8 +124,13 @@ export default function HeroDisplay() {
               Welcome to
             </div>
             <div className="text-[36px] font-bold text-text-primary tracking-[2px]">
-              {name.toUpperCase()}
-              <span className="text-accent">_</span>
+              {typedName}
+              <span
+                className="text-accent"
+                style={{ opacity: cursorVisible ? 1 : 0 }}
+              >
+                _
+              </span>
             </div>
           </div>
         </div>
@@ -92,8 +142,8 @@ export default function HeroDisplay() {
               "linear-gradient(90deg, transparent, #00e5ff, transparent)",
           }}
         />
-        <p className="text-[14px] text-text-secondary text-center max-w-[300px] leading-relaxed mb-3.5">
-          {title} crafting modern web experiences with clean code.
+        <p className="text-[14px] text-text-secondary text-center max-w-[300px] leading-relaxed mb-3.5 h-[42px]">
+          {typedSub}
         </p>
       </div>
     </div>
