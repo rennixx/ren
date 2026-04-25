@@ -120,6 +120,21 @@
     flex-shrink: 0;
   }
 
+  @keyframes glitch-sweep {
+    0% {
+      transform: scaleX(0);
+      opacity: 1;
+    }
+    50% {
+      transform: scaleX(1);
+      opacity: 0.8;
+    }
+    100% {
+      transform: scaleX(1);
+      opacity: 0;
+    }
+  }
+
   /* Tablet: 2-column layout */
   @media (max-width: 1023px) {
     .panel-clip {
