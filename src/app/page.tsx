@@ -51,7 +51,7 @@ export default function Home() {
 
       <TopNav />
 
-      <motion.div className="relative z-[1] grid grid-cols-[260px_1fr_200px] grid-rows-2 gap-2.5 p-3.5 px-[18px] h-[calc(100vh-38px)]" variants={containerVariants} initial="hidden" animate="visible">
+      <motion.div className="relative z-[1] grid grid-cols-1 md:grid-cols-[1fr_200px] lg:grid-cols-[260px_1fr_200px] md:grid-rows-[auto_1fr_1fr] lg:grid-rows-2 gap-2.5 p-3.5 px-[18px] h-[calc(100vh-38px)] overflow-auto lg:overflow-hidden" variants={containerVariants} initial="hidden" animate="visible">
         {/* Circuit connectors */}
         <CircuitConnector
           direction="horizontal"

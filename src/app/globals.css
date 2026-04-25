@@ -118,6 +118,22 @@
     margin: 0 6px;
     flex-shrink: 0;
   }
+
+  /* Tablet: 2-column layout */
+  @media (max-width: 1023px) {
+    .panel-clip {
+      clip-path: polygon(
+        8px 0,
+        calc(100% - 8px) 0,
+        100% 8px,
+        100% calc(100% - 8px),
+        calc(100% - 8px) 100%,
+        8px 100%,
+        0 calc(100% - 8px),
+        0 8px
+      );
+    }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
