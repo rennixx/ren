@@ -23,12 +23,16 @@ export default function HeroDisplay() {
         indexRef.current++;
         setTypedName(nameText.slice(0, indexRef.current));
         if (indexRef.current < nameText.length) {
-          addTimer(type, 100);
+          addTimer(type, 180);
         } else {
-          addTimer(() => setPhase("paused"), 2500);
+          addTimer(() => setPhase("paused"), 3000);
         }
       };
-      addTimer(type, 100);
+      addTimer(type, 500);
+    }
+
+    if (phase === "paused") {
+      addTimer(() => setPhase("deleting"), 0);
     }
 
     if (phase === "deleting") {
@@ -37,12 +41,12 @@ export default function HeroDisplay() {
         i--;
         setTypedName(nameText.slice(0, i));
         if (i > 0) {
-          addTimer(del, 60);
+          addTimer(del, 100);
         } else {
-          addTimer(() => setPhase("wait"), 400);
+          addTimer(() => setPhase("wait"), 600);
         }
       };
-      addTimer(del, 60);
+      addTimer(del, 100);
     }
 
     if (phase === "wait") {
