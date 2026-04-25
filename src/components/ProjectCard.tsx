@@ -1,3 +1,7 @@
+"use client";
+
+import { motion } from "framer-motion";
+
 interface ProjectCardProps {
   id: string;
   name: string;
@@ -12,7 +16,11 @@ export default function ProjectCard({
   tags,
 }: ProjectCardProps) {
   return (
-    <div className="card-clip border border-accent/15 p-2.5 relative bg-accent/[0.01] hover:bg-accent/[0.04] hover:border-accent/30 transition-all cursor-pointer group">
+    <motion.div
+      className="card-clip border border-accent/15 p-2.5 relative bg-accent/[0.01] cursor-pointer group"
+      whileHover={{ y: -2, borderColor: "rgba(0,229,255,0.3)", backgroundColor: "rgba(0,229,255,0.04)" }}
+      transition={{ duration: 0.15 }}
+    >
       <div className="flex justify-between items-start mb-1">
         <div className="text-sm text-text-primary font-bold group-hover:text-accent transition-colors">
           {name}
@@ -32,6 +40,6 @@ export default function ProjectCard({
           </span>
         ))}
       </div>
-    </div>
+    </motion.div>
   );
 }
