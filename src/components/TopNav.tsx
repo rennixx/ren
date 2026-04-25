@@ -29,26 +29,26 @@ export default function TopNav() {
             strokeWidth="0.5"
           />
         </svg>
-        <span className="text-xs font-bold tracking-[4px] uppercase text-accent">
+        <span className="text-sm font-bold tracking-[4px] uppercase text-accent">
           REN://
         </span>
       </div>
 
-      <div className="flex gap-5 text-[9px] tracking-[2px] uppercase">
-        <button className="text-accent border-b pb-0.5 border-accent/40 cursor-pointer">
+      <div className="flex gap-5 text-xs tracking-[2px] uppercase">
+        <a href="#dashboard" className="text-accent border-b pb-0.5 border-accent/40 hover:text-accent/80 transition-colors">
           Dashboard
-        </button>
-        <button className="text-accent/40 cursor-pointer hover:text-accent/70 transition-colors">
+        </a>
+        <a href="#projects" className="text-accent/40 hover:text-accent/70 transition-colors">
           Projects
-        </button>
-        <button className="text-accent/40 cursor-pointer hover:text-accent/70 transition-colors">
+        </a>
+        <a href="#contact" className="text-accent/40 hover:text-accent/70 transition-colors">
           Contact
-        </button>
+        </a>
       </div>
 
       <div className="flex items-center gap-2">
         <div className="w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_6px_#00e5ff] animate-pulse" />
-        <span className="text-[9px] text-accent/80 tracking-wider">
+        <span className="text-xs text-accent/80 tracking-wider">
           SYS::ONLINE
         </span>
       </div>

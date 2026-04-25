@@ -9,6 +9,7 @@
     background-color: #060610;
     color: #a0b0c0;
     font-family: "Courier New", Consolas, Monaco, monospace;
+    scroll-behavior: smooth;
   }
 }
 
@@ -80,7 +81,7 @@
   }
 
   .skill-bar-track {
-    height: 3px;
+    height: 4px;
     background: rgba(0, 229, 255, 0.1);
     border-radius: 1px;
   }

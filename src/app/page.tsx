@@ -51,7 +51,7 @@ export default function Home() {
 
       <TopNav />
 
-      <motion.div className="relative z-[1] grid grid-cols-1 md:grid-cols-[1fr_200px] lg:grid-cols-[260px_1fr_200px] md:grid-rows-[auto_1fr_1fr] lg:grid-rows-2 gap-2.5 p-3.5 px-[18px] h-[calc(100vh-38px)] overflow-auto lg:overflow-hidden" variants={containerVariants} initial="hidden" animate="visible">
+      <motion.div className="relative z-[1] grid grid-cols-1 md:grid-cols-[1fr_240px] lg:grid-cols-[300px_1fr_240px] md:grid-rows-[auto_1fr_1fr] lg:grid-rows-2 gap-2.5 p-3.5 px-[18px] h-[calc(100vh-44px)] overflow-auto lg:overflow-hidden" variants={containerVariants} initial="hidden" animate="visible">
         {/* Circuit connectors */}
         <CircuitConnector
           direction="horizontal"
@@ -67,12 +67,12 @@ export default function Home() {
         />
 
         {/* Left: Profile (spans both rows) */}
-        <motion.section className="row-span-2" aria-label="Profile" variants={panelVariants}>
+        <motion.section id="contact" className="row-span-2" aria-label="Profile" variants={panelVariants}>
           <ProfilePanel />
         </motion.section>
 
         {/* Center top: Hero */}
-        <motion.section aria-label="Hero" variants={panelVariants}>
+        <motion.section id="dashboard" aria-label="Hero" variants={panelVariants}>
           <HeroDisplay />
         </motion.section>
 
@@ -82,7 +82,7 @@ export default function Home() {
         </motion.aside>
 
         {/* Center bottom: Projects */}
-        <motion.section aria-label="Projects" variants={panelVariants}>
+        <motion.section id="projects" aria-label="Projects" variants={panelVariants}>
           <ProjectGrid />
         </motion.section>
       </motion.div>

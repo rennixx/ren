@@ -1,54 +1,64 @@
 {
-  "name": "Your Name",
-  "title": "Full Stack Developer",
-  "bio": "Building digital experiences with clean code and sharp design.",
+  "name": "Ren",
+  "title": "Software Engineer",
+  "bio": "Full-stack developer focused on building performant, visually engaging applications with modern web technologies.",
   "avatar": "/images/avatar.png",
+
   "skills": [
-    { "name": "React", "level": 92 },
-    { "name": "TypeScript", "level": 88 },
+    { "name": "React", "level": 90 },
+    { "name": "TypeScript", "level": 85 },
+    { "name": "JavaScript", "level": 92 },
+    { "name": "HTML/CSS", "level": 92 },
+    { "name": "Tailwind CSS", "level": 85 },
+    { "name": "Framer Motion", "level": 75 },
+    { "name": "Three.js", "level": 70 },
     { "name": "Node.js", "level": 85 },
-    { "name": "Python", "level": 78 }
+    { "name": "Express.js", "level": 80 },
+    { "name": "Python", "level": 75 },
+    { "name": "MongoDB", "level": 75 },
+    { "name": "PostgreSQL", "level": 70 },
+    { "name": "Docker", "level": 70 },
+    { "name": "Vercel", "level": 80 },
+    { "name": "Figma", "level": 72 },
+    { "name": "Git", "level": 88 },
+    { "name": "Vite", "level": 82 }
   ],
+
   "projects": [
     {
       "id": "01",
-      "name": "Alpha",
-      "description": "Full-stack web app with real-time features.",
-      "tags": ["React", "Node"]
+      "name": "RYNX Portfolio",
+      "description": "Interactive portfolio with advanced animations and effects.",
+      "tags": ["React", "TypeScript", "Tailwind", "Framer Motion", "Canvas"]
     },
     {
       "id": "02",
-      "name": "Beta",
-      "description": "Data dashboard with visualization.",
-      "tags": ["Next.js", "D3"]
+      "name": "Mamcenter2012",
+      "description": "Educational platform for learning resources.",
+      "tags": ["React", "Node.js", "MongoDB"]
     },
     {
       "id": "03",
-      "name": "Gamma",
-      "description": "API service with auth and caching.",
-      "tags": ["Python", "Redis"]
-    },
-    {
-      "id": "04",
-      "name": "Delta",
-      "description": "CLI tool for dev workflow automation.",
-      "tags": ["Go", "Cobra"]
+      "name": "LIS",
+      "description": "Library information system for managing operations.",
+      "tags": ["React", "Express", "MongoDB", "REST API"]
     }
   ],
+
   "stats": {
-    "projectCount": 12,
-    "experience": "3+",
+    "projectCount": 3,
+    "experience": "2+",
     "experienceUnit": "years",
-    "stackCount": 8,
+    "stackCount": 17,
     "status": "online",
     "statusText": "Available for work",
-    "seniorityPercent": 74,
+    "seniorityPercent": 72,
     "uptime": "99.9%"
   },
+
   "contact": {
-    "github": "https://github.com/username",
-    "linkedin": "https://linkedin.com/in/username",
-    "email": "mailto:hello@example.com",
-    "twitter": "https://twitter.com/username"
+    "github": "https://github.com/rennixx",
+    "linkedin": "https://linkedin.com/in/vrynyx",
+    "email": "mailto:vrynyx@gmail.com"
   }
 }

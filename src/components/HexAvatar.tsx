@@ -24,7 +24,7 @@ export default function HexAvatar() {
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-xl text-accent">?</span>
+        <span className="text-2xl text-accent">?</span>
       </div>
     </div>
   );
