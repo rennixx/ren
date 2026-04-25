@@ -1,0 +1,54 @@
+{
+  "name": "Your Name",
+  "title": "Full Stack Developer",
+  "bio": "Building digital experiences with clean code and sharp design.",
+  "avatar": "/images/avatar.png",
+  "skills": [
+    { "name": "React", "level": 92 },
+    { "name": "TypeScript", "level": 88 },
+    { "name": "Node.js", "level": 85 },
+    { "name": "Python", "level": 78 }
+  ],
+  "projects": [
+    {
+      "id": "01",
+      "name": "Alpha",
+      "description": "Full-stack web app with real-time features.",
+      "tags": ["React", "Node"]
+    },
+    {
+      "id": "02",
+      "name": "Beta",
+      "description": "Data dashboard with visualization.",
+      "tags": ["Next.js", "D3"]
+    },
+    {
+      "id": "03",
+      "name": "Gamma",
+      "description": "API service with auth and caching.",
+      "tags": ["Python", "Redis"]
+    },
+    {
+      "id": "04",
+      "name": "Delta",
+      "description": "CLI tool for dev workflow automation.",
+      "tags": ["Go", "Cobra"]
+    }
+  ],
+  "stats": {
+    "projectCount": 12,
+    "experience": "3+",
+    "experienceUnit": "years",
+    "stackCount": 8,
+    "status": "online",
+    "statusText": "Available for work",
+    "seniorityPercent": 74,
+    "uptime": "99.9%"
+  },
+  "contact": {
+    "github": "https://github.com/username",
+    "linkedin": "https://linkedin.com/in/username",
+    "email": "mailto:hello@example.com",
+    "twitter": "https://twitter.com/username"
+  }
+}
