@@ -1,20 +1,64 @@
+<div align="center">
+
 # Mohammed M.
 
-Personal site for Mohammed M., a full-stack and AI engineer in Erbil. The page is one git log: the latest commit is the intro, projects sit on the graph, and contact links are remotes.
+A portfolio written as a git log.
 
-Live at [icyren.dev](https://icyren.dev).
+[![live](https://img.shields.io/badge/live-icyren.dev-d9b35a?style=flat-square&labelColor=161615)](https://icyren.dev)
+
+<br/>
+
+<img src="docs/preview.png" alt="Desktop view of the git log portfolio" width="880" />
+
+<br/>
+
+<img src="docs/preview-mobile.png" alt="The same page at 390px" width="260" />
+
+</div>
+
+## About
+
+Full-stack and AI engineer in Erbil, Iraq. The page is one screen: the latest commit is the introduction, the work is a commit graph, and the contact links are remotes.
+
+## Features
+
+- **Commit graph.** A gold line for main, and a mint branch for Mam Center that merges back.
+- **Keyboard.** Enter or Space expands a commit. Escape closes it. Links inside an open row stay in the tab order.
+- **Reduced motion.** The expand animation is skipped when it is requested.
+- **Mobile.** Hashes and the stack column hide, and the graph stays a narrow rail.
 
 ## Stack
 
-- Next.js 16
-- React 19
-- TypeScript
-- Tailwind CSS 4
-- Framer Motion
+[![Next.js](https://img.shields.io/badge/Next.js-16-161615?style=flat-square&logo=nextdotjs&logoColor=f2f0e9)](https://nextjs.org)
+[![React](https://img.shields.io/badge/React-19-161615?style=flat-square&logo=react&logoColor=f2f0e9)](https://react.dev)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-161615?style=flat-square&logo=tailwindcss&logoColor=f2f0e9)](https://tailwindcss.com)
+[![Framer Motion](https://img.shields.io/badge/Framer_Motion-12-161615?style=flat-square&logo=framer&logoColor=f2f0e9)](https://www.framer.com/motion/)
+[![Fira Code](https://img.shields.io/badge/Fira_Code-next%2Ffont-161615?style=flat-square)](https://fonts.google.com/specimen/Fira+Code)
 
 Fira Code is loaded with `next/font`.
 
-## Develop
+## Project structure
+
+```
+src/
+├── app/
+│   ├── layout.tsx          # Font, metadata, document shell
+│   ├── page.tsx            # Assembles the log
+│   └── globals.css         # Color tokens and focus styles
+├── components/
+│   ├── HeadCommit.tsx      # git show HEAD
+│   ├── CommitGraph.tsx     # Expandable project rows
+│   ├── GraphRail.tsx       # Gold and mint graph lines
+│   ├── Remotes.tsx         # git remote -v
+│   ├── PageShell.tsx       # 980px column
+│   └── Prompt.tsx          # ren@icyren ~ (main) $
+└── data/
+    └── log.ts              # Intro and commit list
+```
+
+The intro and the commits live in `src/data/log.ts`. Contact links live in `src/components/Remotes.tsx`.
+
+## Local development
 
 ```bash
 npm install
@@ -26,15 +70,14 @@ Open [localhost:3000](http://localhost:3000).
 ```bash
 npm run build
 npm run start
-npm run lint
 ```
 
-## Content
+## Deployment
 
-The intro and the commit list live in `src/data/log.ts`. Contact links live in `src/components/Remotes.tsx`. A CV remote is included only when `public/cv.pdf` is present.
+Push `master`. [Vercel](https://vercel.com) builds the site and serves it at [icyren.dev](https://icyren.dev).
 
-`public/images/avatar.jpg` stays in the repo. The page does not render it.
+## Contact
 
-## Deploy
-
-Push `master`. Vercel builds the site and serves it at [icyren.dev](https://icyren.dev).
+- [ren@icyren.dev](mailto:ren@icyren.dev)
+- [github.com/rennixx](https://github.com/rennixx)
+- [linkedin.com/in/vrynyx](https://linkedin.com/in/vrynyx)
