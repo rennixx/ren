@@ -9,7 +9,8 @@ export function HeadCommit() {
       </p>
       <p className="mt-8 text-[13px] leading-6 text-muted">
         commit <span className="text-gold">{headCommit.hash}</span>
-        {"  (HEAD -> main, tag: open-to-work)"}
+        {"  "}
+        <span className="inline-block">(HEAD -&gt; main, tag: open-to-work)</span>
       </p>
       <p className="text-[13px] leading-6 text-muted">{"Author: ren <ren@icyren.dev>"}</p>
       <div className="mt-12 pl-[4ch]">

@@ -1,14 +1,14 @@
 "use client";
 
 import { useId, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { CommitTag, LogEntry } from "@/data/log";
 import { commits } from "@/data/log";
 import { GraphRail } from "@/components/GraphRail";
 import { Prompt } from "@/components/Prompt";
 
 const rowGrid =
-  "grid grid-cols-[7.5ch_3.6rem_minmax(0,1fr)_auto] items-start gap-x-3";
+  "grid grid-cols-[3.6rem_minmax(0,1fr)] items-start gap-x-3 @[860px]:grid-cols-[7.5ch_3.6rem_minmax(0,1fr)_auto]";
 
 const tagClass: Record<CommitTag, string> = {
   proto: "border-line text-muted",
@@ -19,9 +19,10 @@ const tagClass: Record<CommitTag, string> = {
 function CommitRow({ entry }: { entry: LogEntry }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
+  const reduceMotion = useReducedMotion();
 
   return (
-    <li className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3">
+    <li className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-2.5 @[860px]:gap-x-3">
       <GraphRail kind={entry.graph} />
       <div className="min-w-0">
         <button
@@ -29,10 +30,16 @@ function CommitRow({ entry }: { entry: LogEntry }) {
           aria-expanded={open}
           aria-controls={panelId}
           onClick={() => setOpen((value) => !value)}
-          className={`${rowGrid} w-full cursor-pointer py-4 text-left`}
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && open) {
+              event.preventDefault();
+              setOpen(false);
+            }
+          }}
+          className={`${rowGrid} group w-full cursor-pointer py-4 text-left`}
         >
           <span
-            className={`text-[13px] leading-6 ${open ? "text-gold" : "text-muted"}`}
+            className={`hidden text-[13px] leading-6 @[860px]:block ${open ? "text-gold" : "text-muted group-hover:text-gold"}`}
           >
             {entry.hash}
           </span>
@@ -45,10 +52,10 @@ function CommitRow({ entry }: { entry: LogEntry }) {
               </span>
             ) : null}
           </span>
-          <span className="min-w-0 whitespace-nowrap text-[13.5px] leading-6 text-ink">
+          <span className="min-w-0 text-[13.5px] leading-6 text-ink @[860px]:whitespace-nowrap">
             {entry.message}
           </span>
-          <span className="whitespace-nowrap text-right text-[12.5px] leading-6 text-muted">
+          <span className="hidden whitespace-nowrap text-right text-[12.5px] leading-6 text-muted @[860px]:block">
             {entry.stack}
           </span>
         </button>
@@ -61,11 +68,15 @@ function CommitRow({ entry }: { entry: LogEntry }) {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              transition={
+                reduceMotion
+                  ? { duration: 0 }
+                  : { duration: 0.22, ease: [0.16, 1, 0.3, 1] }
+              }
               className="overflow-hidden"
             >
               <div className={`${rowGrid} pb-4`}>
-                <div className="col-start-3 col-span-2 max-w-[66ch]">
+                <div className="col-start-2 max-w-[66ch] @[860px]:col-span-2 @[860px]:col-start-3">
                   <p className="text-[13.5px] leading-6 text-muted">{entry.description}</p>
                   {entry.install ? (
                     <p className="mt-3 text-[13.5px] leading-6 text-ink">
@@ -95,7 +106,7 @@ function CommitRow({ entry }: { entry: LogEntry }) {
 
 export function CommitGraph() {
   return (
-    <section className="mt-24" aria-labelledby="log-heading">
+    <section className="mt-20 @container sm:mt-24" aria-labelledby="log-heading">
       <h2 id="log-heading" className="font-normal">
         <Prompt command="git log --graph" />
       </h2>
