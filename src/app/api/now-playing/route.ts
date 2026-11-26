@@ -1,19 +1,18 @@
 import { getNowPlaying } from "@/lib/get-now-playing";
 
-export const revalidate = 8;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+const NO_STORE = { "Cache-Control": "private, no-store" };
 
 export async function GET() {
   try {
-    const track = await getNowPlaying();
-    if (!track) {
-      return new Response(null, { status: 204 });
-    }
-    return Response.json(track, {
-      headers: {
-        "Cache-Control": "public, s-maxage=8, stale-while-revalidate=2",
-      },
-    });
+    const payload = await getNowPlaying();
+    return Response.json(payload, { headers: NO_STORE });
   } catch {
-    return new Response(null, { status: 204 });
+    return Response.json(
+      { status: "unknown", serverNow: Date.now() },
+      { headers: NO_STORE },
+    );
   }
 }

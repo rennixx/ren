@@ -1,13 +1,15 @@
 import {
   itunesArtworkUrl,
-  parseCurrentStream,
-  parseRecentStreams,
+  resolveNowPlaying,
+  type NowPlayingPayload,
+  type StatsFmFetch,
   type TrackPayload,
 } from "@/lib/now-playing";
 
 const STATS_FM_ENDPOINT = "https://api.stats.fm/api/v1";
 const ITUNES_ENDPOINT = "https://itunes.apple.com/search";
 const USER_PATTERN = /^[A-Za-z0-9._-]+$/;
+const STATS_FM_TIMEOUT_MS = 4_000;
 
 async function lookupItunesArtwork(artist: string, title: string): Promise<string | null> {
   const url = `${ITUNES_ENDPOINT}?term=${encodeURIComponent(`${artist} ${title}`)}&entity=song&limit=5`;
@@ -37,20 +39,35 @@ async function lookupItunesArtwork(artist: string, title: string): Promise<strin
   }
 }
 
-async function statsFmGet(path: string): Promise<unknown | null> {
-  const res = await fetch(`${STATS_FM_ENDPOINT}${path}`, {
-    headers: { Accept: "application/json" },
-    next: { revalidate: 8 },
-  });
-  if (!res.ok) return null;
-  return res.json();
+async function statsFmGetOnce(path: string): Promise<StatsFmFetch> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), STATS_FM_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${STATS_FM_ENDPOINT}${path}`, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    if (!res.ok) return { ok: false };
+    return { ok: true, data: await res.json() };
+  } catch {
+    return { ok: false };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
-async function withCover(track: TrackPayload): Promise<TrackPayload> {
-  if (!track.coverUrl) {
-    track.coverUrl = await lookupItunesArtwork(track.artist, track.title);
-  }
-  return track;
+/** One retry on timeout, HTTP error, or network failure. Never throws. */
+async function statsFmGet(path: string): Promise<StatsFmFetch> {
+  const first = await statsFmGetOnce(path);
+  if (first.ok) return first;
+  return statsFmGetOnce(path);
+}
+
+async function withCover(payload: NowPlayingPayload): Promise<NowPlayingPayload> {
+  if (payload.status === "unknown" || payload.coverUrl) return payload;
+  payload.coverUrl = await lookupItunesArtwork(payload.artist, payload.title);
+  return payload;
 }
 
 export function statsFmUser(): string | null {
@@ -59,20 +76,22 @@ export function statsFmUser(): string | null {
   return user;
 }
 
-export async function getNowPlaying(): Promise<TrackPayload | null> {
+export async function getNowPlaying(): Promise<NowPlayingPayload> {
   const user = statsFmUser();
-  if (!user) return null;
+  const nowMs = Date.now();
+  if (!user) return { status: "unknown", serverNow: nowMs };
 
   try {
-    const current = parseCurrentStream(await statsFmGet(`/users/${user}/streams/current`));
-    if (current) return withCover(current);
-
-    const recent = parseRecentStreams(
-      await statsFmGet(`/users/${user}/streams/recent?limit=1`),
-    );
-    if (!recent) return null;
-    return withCover(recent);
+    const currentPath = `/users/${user}/streams/current`;
+    const recentPath = `/users/${user}/streams/recent?limit=1`;
+    const [currentFetch, recentFetch] = await Promise.all([
+      statsFmGet(currentPath),
+      statsFmGet(recentPath),
+    ]);
+    return withCover(resolveNowPlaying(currentFetch, recentFetch, nowMs));
   } catch {
-    return null;
+    return { status: "unknown", serverNow: nowMs };
   }
 }
+
+export type { TrackPayload, NowPlayingPayload };
