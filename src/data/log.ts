@@ -71,8 +71,8 @@ export const commits: LogEntry[] = [
   {
     id: "root",
     hash: "71e0352",
-    message: "start freelancing, 2023",
-    description: "The root of this log. Independent work since 2023.",
+    message: "start freelancing, 2021",
+    description: "The root of this log. Independent work since October 2021.",
     graph: "root",
   },
 ];

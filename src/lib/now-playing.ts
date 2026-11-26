@@ -8,7 +8,8 @@ export type TrackPayload = {
   progressMs: number | null;
   durationMs: number | null;
   isPlaying: boolean;
-  fetchedAt: number;
+  snapshotAt: number | null;
+  serverNow: number;
 };
 
 export function itunesArtworkUrl(url100: string): string {
@@ -27,7 +28,9 @@ export function formatPlayedAgo(utsSeconds: number, nowMs = Date.now()): string 
   });
 }
 
-export function hasProgress(track: TrackPayload): boolean {
+export function hasProgress(
+  track: Pick<TrackPayload, "live" | "progressMs" | "durationMs">,
+): boolean {
   return (
     track.live &&
     track.progressMs != null &&
@@ -35,6 +38,66 @@ export function hasProgress(track: TrackPayload): boolean {
     track.durationMs != null &&
     track.durationMs > 0
   );
+}
+
+/** Snapshots this far past the end of the track are treated as stale. */
+export const STALE_AFTER_MS = 5_000;
+
+/** Ignore receivedAt-serverNow offsets larger than this; they are cache age, not clock skew. */
+const SKEW_MAX_MS = 2_000;
+
+export type ProgressPosition = {
+  positionMs: number;
+  ratio: number | null;
+  stale: boolean;
+};
+
+function estimateSkew(receivedAt: number, serverNow: number): number {
+  const offset = receivedAt - serverNow;
+  // A large offset is almost always the age of a cached response, not clock skew.
+  if (!Number.isFinite(offset) || Math.abs(offset) > SKEW_MAX_MS) return 0;
+  return offset;
+}
+
+/**
+ * Reconstruct the playhead from a stats.fm progress snapshot.
+ *
+ * stats.fm's `progressMs` is taken at `snapshotAt` and is not a live playhead;
+ * it often stays unchanged across polls until stats.fm refreshes it. The true
+ * position is `progressMs + (now - snapshotAt)`. Pause and seek can therefore
+ * lag until the next snapshot.
+ *
+ * `serverNow` is the server clock when the payload was built. Clock skew is
+ * applied only when the payload looks fresh, so cache age is not mistaken
+ * for skew. Positions past `durationMs + 5s` are marked stale (bar held full).
+ */
+export function playbackPosition(
+  track: Pick<
+    TrackPayload,
+    "live" | "progressMs" | "durationMs" | "isPlaying" | "snapshotAt" | "serverNow"
+  >,
+  clientNow: number,
+  receivedAt: number = clientNow,
+): ProgressPosition | null {
+  if (!hasProgress(track) || track.progressMs == null || track.durationMs == null) {
+    return null;
+  }
+
+  const durationMs = track.durationMs;
+  let positionMs = track.progressMs;
+
+  if (track.isPlaying) {
+    const snapshotAt = track.snapshotAt ?? track.serverNow;
+    const adjustedNow = clientNow - estimateSkew(receivedAt, track.serverNow);
+    positionMs = track.progressMs + Math.max(0, adjustedNow - snapshotAt);
+  }
+
+  if (positionMs > durationMs + STALE_AFTER_MS) {
+    return { positionMs: durationMs, ratio: 1, stale: true };
+  }
+
+  positionMs = Math.min(durationMs, Math.max(0, positionMs));
+  return { positionMs, ratio: positionMs / durationMs, stale: false };
 }
 
 function textOf(value: unknown): string {
@@ -83,7 +146,7 @@ function durationOf(track: Record<string, unknown>): number | null {
 
 export function parseTrack(track: unknown): Omit<
   TrackPayload,
-  "live" | "playedAgo" | "progressMs" | "isPlaying" | "fetchedAt"
+  "live" | "playedAgo" | "progressMs" | "isPlaying" | "snapshotAt" | "serverNow"
 > | null {
   const rec = asRecord(track);
   if (!rec) return null;
@@ -115,10 +178,11 @@ export function parseCurrentStream(data: unknown, nowMs = Date.now()): TrackPayl
         ? Math.max(0, Number(progressRaw))
         : null;
 
-  const fetchedAt = (() => {
-    if (item.date == null) return nowMs;
+  // stats.fm `date` is when this progressMs snapshot was taken, not "now".
+  const snapshotAt = (() => {
+    if (item.date == null) return null;
     const t = new Date(item.date as string | number).getTime();
-    return Number.isFinite(t) ? t : nowMs;
+    return Number.isFinite(t) ? t : null;
   })();
 
   return {
@@ -127,7 +191,8 @@ export function parseCurrentStream(data: unknown, nowMs = Date.now()): TrackPayl
     playedAgo: null,
     progressMs,
     isPlaying: item.isPlaying !== false,
-    fetchedAt,
+    snapshotAt,
+    serverNow: nowMs,
   };
 }
 
@@ -152,6 +217,7 @@ export function parseRecentStreams(data: unknown, nowMs = Date.now()): TrackPayl
     playedAgo,
     progressMs: null,
     isPlaying: false,
-    fetchedAt: nowMs,
+    snapshotAt: null,
+    serverNow: nowMs,
   };
 }

@@ -1,6 +1,6 @@
 import { getNowPlaying } from "@/lib/get-now-playing";
 
-export const revalidate = 20;
+export const revalidate = 8;
 
 export async function GET() {
   try {
@@ -10,7 +10,7 @@ export async function GET() {
     }
     return Response.json(track, {
       headers: {
-        "Cache-Control": "public, s-maxage=20, stale-while-revalidate=40",
+        "Cache-Control": "public, s-maxage=8, stale-while-revalidate=2",
       },
     });
   } catch {

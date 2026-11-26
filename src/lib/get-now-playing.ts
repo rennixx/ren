@@ -40,7 +40,7 @@ async function lookupItunesArtwork(artist: string, title: string): Promise<strin
 async function statsFmGet(path: string): Promise<unknown | null> {
   const res = await fetch(`${STATS_FM_ENDPOINT}${path}`, {
     headers: { Accept: "application/json" },
-    next: { revalidate: 20 },
+    next: { revalidate: 8 },
   });
   if (!res.ok) return null;
   return res.json();
