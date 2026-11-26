@@ -4,9 +4,10 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { hasProgress, type TrackPayload } from "@/lib/now-playing";
 
 const POLL_MS = 30_000;
-const BAR_COUNT = 4;
-const BAR_MAX = 14;
-const BAR_MIN = 3;
+const BAR_COUNT = 5;
+const SCALE_MIN = 0.27;
+const SCALE_MAX = 1;
+const BAR_COLORS = ["gold", "mint", "gold", "gold", "mint"] as const;
 
 function hashSeed(value: string): number {
   let h = 2166136261;
@@ -33,16 +34,17 @@ type BarMotion = {
   delay: string;
   keyframes: string;
   rest: number;
+  color: (typeof BAR_COLORS)[number];
 };
 
 function motionForTrack(seed: string, prefix: string): BarMotion[] {
   const rand = mulberry32(hashSeed(seed));
   return Array.from({ length: BAR_COUNT }, (_, i) => {
-    const start = BAR_MIN + rand() * 4;
-    const mid = [0, 1, 2].map(() => BAR_MIN + rand() * (BAR_MAX - BAR_MIN));
-    const heights = [start, ...mid, start];
+    const start = SCALE_MIN + rand() * 0.35;
+    const mid = [0, 1, 2].map(() => SCALE_MIN + rand() * (SCALE_MAX - SCALE_MIN));
+    const scales = [start, ...mid, start];
     const steps = ["0%", "25%", "50%", "75%", "100%"]
-      .map((pct, j) => `${pct} { height: ${heights[j]!.toFixed(2)}px; }`)
+      .map((pct, j) => `${pct} { transform: scaleY(${scales[j]!.toFixed(3)}); }`)
       .join(" ");
     const name = `${prefix}-${i}`;
     const duration = 0.85 + rand() * 0.95;
@@ -52,7 +54,8 @@ function motionForTrack(seed: string, prefix: string): BarMotion[] {
       duration: `${duration.toFixed(3)}s`,
       delay: `${delay.toFixed(3)}s`,
       keyframes: `@keyframes ${name} { ${steps} }`,
-      rest: BAR_MIN + rand() * 2,
+      rest: SCALE_MIN + rand() * 0.18,
+      color: BAR_COLORS[i]!,
     };
   });
 }
@@ -116,6 +119,7 @@ function Equaliser({ seed, playing }: { seed: string; playing: boolean }) {
       {bars.map((bar) => (
         <i
           key={bar.name}
+          className={bar.color === "mint" ? "is-mint" : undefined}
           style={
             animate
               ? {
@@ -125,7 +129,7 @@ function Equaliser({ seed, playing }: { seed: string; playing: boolean }) {
                   animationTimingFunction: "ease-in-out",
                   animationIterationCount: "infinite",
                 }
-              : { height: `${bar.rest.toFixed(2)}px`, animation: "none" }
+              : { transform: `scaleY(${bar.rest.toFixed(3)})`, animation: "none" }
           }
         />
       ))}
