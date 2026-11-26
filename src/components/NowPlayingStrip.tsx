@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useState, useSyncExternalStore } from "react";
-import { hasProgress, playbackPosition, type NowPlayingPayload, type TrackPayload } from "@/lib/now-playing";
+import { hasProgress, resolvePlayback, type NowPlayingPayload, type ProgressAnchor, type TrackPayload } from "@/lib/now-playing";
 import { applyNowPlayingUpdate, initialDisplayState } from "@/lib/now-playing-state";
 
 const POLL_MS = 10_000;
@@ -87,7 +87,11 @@ function subscribeIdle() {
   return () => {};
 }
 
-function useProgressRatio(track: TrackPayload | null, receivedAt: number | null): number | null {
+function useProgressRatio(
+  track: TrackPayload | null,
+  receivedAt: number | null,
+  anchor: ProgressAnchor | null,
+): number | null {
   const playing = Boolean(track && hasProgress(track) && track.isPlaying);
   const serverNow = track?.serverNow ?? 0;
   const now = useSyncExternalStore(
@@ -96,7 +100,7 @@ function useProgressRatio(track: TrackPayload | null, receivedAt: number | null)
     () => serverNow,
   );
   if (!track) return null;
-  return playbackPosition(track, now, receivedAt ?? now)?.ratio ?? null;
+  return resolvePlayback(track, now, receivedAt ?? now, anchor).position?.ratio ?? null;
 }
 
 function ProgressHairline({ ratio }: { ratio: number }) {
@@ -145,6 +149,7 @@ function Equaliser({ seed, playing }: { seed: string; playing: boolean }) {
 export function NowPlayingStrip({ initial }: { initial: NowPlayingPayload | null }) {
   const [state, setState] = useState(() => initialDisplayState(initial));
   const [receivedAt, setReceivedAt] = useState<number | null>(null);
+  const [anchor, setAnchor] = useState<ProgressAnchor | null>(null);
   const track = state.track;
 
   useEffect(() => {
@@ -163,7 +168,14 @@ export function NowPlayingStrip({ initial }: { initial: NowPlayingPayload | null
         if (cancelled) return;
         const now = Date.now();
         setState((prev) => applyNowPlayingUpdate(prev, { type: "payload", payload: data }, now));
-        if (data.status !== "unknown") setReceivedAt(now);
+        if (data.status !== "unknown") {
+          setReceivedAt(now);
+          if (data.status === "live" || data.status === "paused") {
+            setAnchor((prev) => resolvePlayback(data, now, now, prev).anchor);
+          } else {
+            setAnchor(null);
+          }
+        }
       } catch {
         setState((prev) => applyNowPlayingUpdate(prev, { type: "error" }, Date.now()));
       }
@@ -203,7 +215,7 @@ export function NowPlayingStrip({ initial }: { initial: NowPlayingPayload | null
     };
   }, []);
 
-  const ratio = useProgressRatio(track, receivedAt);
+  const ratio = useProgressRatio(track, receivedAt, anchor);
 
   if (!track) return null;
 

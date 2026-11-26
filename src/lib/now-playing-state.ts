@@ -28,17 +28,18 @@ export function isTrack(payload: NowPlayingPayload): payload is TrackPayload {
 }
 
 /**
- * Projected end of the snapshotted playhead, plus a grace period.
- * stats.fm's snapshot date can be minutes old while the track is still playing,
- * so this is only used together with a confirmed null, never on its own.
+ * Projected end of the current play, plus a grace period.
+ * stats.fm's `date` is the implied start of the play, so the end is start + duration.
+ * Used only together with a confirmed null, never on its own.
  */
 export function projectedEndMs(track: TrackPayload): number | null {
-  if (track.progressMs == null || track.durationMs == null || track.durationMs <= 0) {
+  if (track.durationMs == null || track.durationMs <= 0) {
     return null;
   }
-  const start = track.snapshotAt ?? track.serverNow;
-  const remaining = Math.max(0, track.durationMs - track.progressMs);
-  return start + remaining + END_GRACE_MS;
+  const start =
+    track.snapshotAt ??
+    (track.progressMs != null ? track.serverNow - track.progressMs : track.serverNow);
+  return start + track.durationMs + END_GRACE_MS;
 }
 
 export function applyNowPlayingUpdate(
