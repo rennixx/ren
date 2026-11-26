@@ -9,6 +9,9 @@ import {
   parseTrack,
   playbackPosition,
   resolveNowPlaying,
+  resolvePlayback,
+  BAR_CAP_RATIO,
+  impliedStartedAt,
 } from "./now-playing";
 
 const NOW = Date.parse("2026-11-26T18:00:00Z");
@@ -159,79 +162,186 @@ describe("helpers", () => {
 
 
 describe("playbackPosition", () => {
-  const SNAP = Date.parse("2026-11-26T19:41:16.874Z");
-  const base = {
-    live: true,
-    progressMs: 87_479,
-    durationMs: 180_000,
-    isPlaying: true,
-    snapshotAt: SNAP,
-    serverNow: SNAP + 1_000,
-  };
+  // Recorded from stats.fm /streams/current for iicyren on 2026-11-26
+  // while "Enter Sandman - Remastered 2021" played on iPhone.
+  const DATE = Date.parse("2026-11-26T20:50:09.278Z");
+  const DURATION = 331_560;
+  const TITLE = "Enter Sandman - Remastered 2021";
 
-  it("adds elapsed time since the stats.fm snapshot", () => {
-    const clientNow = SNAP + 84_000;
-    const pos = playbackPosition(base, clientNow, clientNow);
-    assert.equal(pos?.stale, false);
-    assert.equal(pos?.positionMs, 87_479 + 84_000);
-    assert.equal(pos?.ratio, (87_479 + 84_000) / 180_000);
+  const samples = [
+    {
+      label: "first sight, progress fresh",
+      at: Date.parse("2026-11-26T20:51:58.648Z"),
+      progressMs: 109_243,
+    },
+    {
+      label: "progress still frozen 21s later",
+      at: Date.parse("2026-11-26T20:52:19.628Z"),
+      progressMs: 109_243,
+    },
+    {
+      label: "stats.fm refresh, progress jumped ~32s",
+      at: Date.parse("2026-11-26T20:52:30.556Z"),
+      progressMs: 141_125,
+    },
+    {
+      label: "refresh at 52%",
+      at: Date.parse("2026-11-26T20:53:02.506Z"),
+      progressMs: 173_089,
+    },
+    {
+      // Ren reported the real song was about 50% at 23:53 Asia/Baghdad (20:53Z).
+      // At 20:53:02Z the date-as-start model is 52.2%; the old
+      // progressMs+(now-date) model was already 104.5% (bar at the end).
+      label: "ren calibration ~23:53 Baghdad",
+      at: Date.parse("2026-11-26T20:53:43.730Z"),
+      progressMs: 205_058,
+    },
+    {
+      label: "later refresh",
+      at: Date.parse("2026-11-26T20:54:38.650Z"),
+      progressMs: 269_222,
+    },
+  ] as const;
+
+  function track(progressMs: number, at: number) {
+    return {
+      live: true as const,
+      title: TITLE,
+      artist: "Metallica",
+      listenUrl: "https://open.spotify.com/track/3DwQ7AH3xGD9h65ezslm6q",
+      progressMs,
+      durationMs: DURATION,
+      isPlaying: true,
+      snapshotAt: DATE,
+      serverNow: at,
+    };
+  }
+
+  it("treats stats.fm date as the implied start, not the snapshot time", () => {
+    const first = samples[0];
+    const start = impliedStartedAt(first.progressMs, first.at, DATE);
+    assert.equal(start, DATE);
+    // date + progressMs equals the fetch time (within 200ms) when progress is fresh.
+    assert.ok(Math.abs(DATE + first.progressMs - first.at) < 200);
   });
 
-  it("corrects a small clock skew from a fresh payload", () => {
-    const serverNow = SNAP + 1_000;
-    const receivedAt = serverNow + 250; // client 250ms ahead
-    const clientNow = receivedAt + 10_000;
-    const pos = playbackPosition({ ...base, serverNow }, clientNow, receivedAt);
-    // elapsed = (clientNow - skew) - snapshotAt = 11s
-    assert.equal(pos?.positionMs, 87_479 + 11_000);
+  it("matches recorded samples: now-date, not progress+(now-date)", () => {
+    for (const sample of samples) {
+      const pos = playbackPosition(track(sample.progressMs, sample.at), sample.at, sample.at);
+      const expected = sample.at - DATE;
+      assert.ok(pos, sample.label);
+      assert.ok(
+        Math.abs((pos!.positionMs) - expected) < 2 || pos!.capped,
+        `${sample.label}: got ${pos!.positionMs} expected ${expected}`,
+      );
+      const oldModel = sample.progressMs + (sample.at - DATE);
+      // The previous model was about 2x ahead and already past 100% by the 52% sample.
+      if (sample.label.includes("52%") || sample.label.includes("calibration")) {
+        assert.ok(oldModel / DURATION > 1, sample.label);
+        assert.ok((pos!.ratio ?? 0) < 0.8, sample.label);
+      }
+    }
+    // At Ren's 23:53 report, the new model is ~halfway-to-2/3, not finished.
+    const cal = samples.find((s) => s.label.includes("calibration"))!;
+    const pos = playbackPosition(track(cal.progressMs, cal.at), cal.at, cal.at)!;
+    assert.ok(pos.ratio! > 0.45 && pos.ratio! < 0.75);
+    assert.equal(pos.capped, false);
+    assert.ok(cal.progressMs / DURATION + (cal.at - DATE) / DURATION > 1);
   });
 
-  it("does not treat cache age as clock skew", () => {
-    const serverNow = SNAP + 1_000;
-    const receivedAt = serverNow + 20_000; // 20s-old cached payload
-    const clientNow = receivedAt;
-    const pos = playbackPosition({ ...base, serverNow }, clientNow, receivedAt);
-    assert.equal(pos?.positionMs, 87_479 + 21_000);
+  it("interpolates from date while progressMs is frozen between refreshes", () => {
+    const frozen = samples[1];
+    const pos = playbackPosition(track(frozen.progressMs, frozen.at), frozen.at, frozen.at)!;
+    const elapsed = frozen.at - DATE;
+    assert.equal(Math.round(pos.positionMs), elapsed);
+    // Using the frozen progress alone would lag; adding (now-date) to it would lead.
+    assert.ok(frozen.progressMs < pos.positionMs);
+    assert.ok(frozen.progressMs + (frozen.at - DATE) > pos.positionMs * 1.5);
+  });
+
+  it("keeps a stable start when progressMs later catches up", () => {
+    const first = samples[0];
+    const refresh = samples[2];
+    const a1 = resolvePlayback(track(first.progressMs, first.at), first.at, first.at, null);
+    const a2 = resolvePlayback(
+      track(refresh.progressMs, refresh.at),
+      refresh.at,
+      refresh.at,
+      a1.anchor,
+    );
+    assert.equal(a2.anchor?.startedAt, DATE);
+    assert.equal(Math.round(a2.position!.positionMs), refresh.at - DATE);
+  });
+
+  it("does not jump backward by more than 2s unless the jump looks like a seek", () => {
+    const at = DATE + 120_000;
+    const prev = resolvePlayback(track(120_000, at), at, at, null);
+    // A slightly earlier progress (4s) must not rewind the bar.
+    const slip = resolvePlayback(
+      track(116_000, at + 50),
+      at + 50,
+      at + 50,
+      prev.anchor,
+    );
+    assert.equal(slip.anchor?.startedAt, prev.anchor?.startedAt);
+    // A 20s seek backward is accepted.
+    const seekAt = at + 1_000;
+    const seek = resolvePlayback(track(100_000, seekAt), seekAt, seekAt, prev.anchor);
+    assert.ok(Math.abs(seek.position!.positionMs - 100_000) < 50);
   });
 
   it("does not advance when paused", () => {
-    const clientNow = SNAP + 60_000;
-    const pos = playbackPosition({ ...base, isPlaying: false }, clientNow, clientNow);
-    assert.equal(pos?.positionMs, 87_479);
-    assert.equal(pos?.stale, false);
-  });
-
-  it("clamps just past the end of the track", () => {
-    const clientNow = SNAP + (180_000 - 87_479) + 2_000;
-    const pos = playbackPosition(base, clientNow, clientNow);
-    assert.equal(pos?.positionMs, 180_000);
-    assert.equal(pos?.ratio, 1);
-    assert.equal(pos?.stale, false);
-  });
-
-  it("marks a snapshot more than 5s past the end as stale and holds the bar full", () => {
-    const clientNow = SNAP + (180_000 - 87_479) + 5_001;
-    const pos = playbackPosition(base, clientNow, clientNow);
-    assert.equal(pos?.positionMs, 180_000);
-    assert.equal(pos?.ratio, 1);
-    assert.equal(pos?.stale, true);
-  });
-
-  it("falls back to serverNow when snapshotAt is missing", () => {
-    const serverNow = SNAP + 5_000;
-    const clientNow = serverNow + 8_000;
+    const at = DATE + 60_000;
     const pos = playbackPosition(
-      { ...base, snapshotAt: null, serverNow },
-      clientNow,
-      clientNow,
+      { ...track(87_479, at), isPlaying: false, progressMs: 87_479 },
+      at,
+      at,
     );
-    assert.equal(pos?.positionMs, 87_479 + 8_000);
+    assert.equal(pos?.positionMs, 87_479);
+    assert.equal(pos?.capped, false);
+  });
+
+  it("caps the bar at 97% so it cannot finish before the track changes", () => {
+    const at = DATE + DURATION + 5_000;
+    const pos = playbackPosition(track(DURATION - 1_000, at), at, at)!;
+    assert.equal(pos.ratio, BAR_CAP_RATIO);
+    assert.equal(pos.capped, true);
+    assert.ok(pos.positionMs <= DURATION * BAR_CAP_RATIO + 0.001);
+    assert.ok(pos.ratio! < 1);
+  });
+
+  it("falls back to receivedAt - progressMs when snapshotAt is missing", () => {
+    const receivedAt = DATE + 109_243;
+    const clientNow = receivedAt + 8_000;
+    const pos = playbackPosition(
+      { ...track(109_243, receivedAt), snapshotAt: null, serverNow: receivedAt },
+      clientNow,
+      receivedAt,
+    );
+    assert.equal(pos?.positionMs, 109_243 + 8_000);
   });
 
   it("returns null without a usable progress or duration", () => {
-    assert.equal(playbackPosition({ ...base, live: false }, SNAP, SNAP), null);
-    assert.equal(playbackPosition({ ...base, progressMs: null }, SNAP, SNAP), null);
-    assert.equal(playbackPosition({ ...base, durationMs: 0 }, SNAP, SNAP), null);
+    const at = DATE + 1_000;
+    const base = track(109_243, at);
+    assert.equal(playbackPosition({ ...base, live: false }, at, at), null);
+    assert.equal(playbackPosition({ ...base, progressMs: null }, at, at), null);
+    assert.equal(playbackPosition({ ...base, durationMs: 0 }, at, at), null);
+  });
+
+  it("still corrects small clock skew and ignores cache age", () => {
+    const at = DATE + 109_243;
+    const receivedAt = at + 250;
+    const clientNow = receivedAt + 10_000;
+    const pos = playbackPosition(track(109_243, at), clientNow, receivedAt)!;
+    // skew 250ms: adjusted now = clientNow - 250, position = that - DATE = 109_243 + 10_000
+    assert.equal(Math.round(pos.positionMs), 109_243 + 10_000);
+
+    const cachedReceived = at + 20_000;
+    const cached = playbackPosition(track(109_243, at), cachedReceived, cachedReceived)!;
+    // 20s cache age is not skew; date is still the start, so position is now - date.
+    assert.equal(Math.round(cached.positionMs), cachedReceived - DATE);
   });
 });
 

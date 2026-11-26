@@ -53,16 +53,32 @@ export function hasProgress(
   );
 }
 
-/** Snapshots this far past the end of the track are treated as stale. */
-export const STALE_AFTER_MS = 5_000;
+/** Hold the bar here until the track actually changes, so it cannot hit 100% early. */
+export const BAR_CAP_RATIO = 0.97;
+
+/** Ignore backward playhead jumps at or under this unless they look like a seek. */
+export const BACKWARD_SLIP_MS = 2_000;
+
+/** A backward jump at least this large is treated as a real seek and re-anchored. */
+export const SEEK_BACK_MS = 15_000;
 
 /** Ignore receivedAt-serverNow offsets larger than this; they are cache age, not clock skew. */
 const SKEW_MAX_MS = 2_000;
+
+/** If date + progressMs is within this of the fetch, `date` is the implied start. */
+const START_AGREE_MS = 3_000;
 
 export type ProgressPosition = {
   positionMs: number;
   ratio: number | null;
   stale: boolean;
+  capped: boolean;
+};
+
+export type ProgressAnchor = {
+  key: string;
+  startedAt: number;
+  progressMs: number;
 };
 
 function estimateSkew(receivedAt: number, serverNow: number): number {
@@ -72,46 +88,105 @@ function estimateSkew(receivedAt: number, serverNow: number): number {
   return offset;
 }
 
+export function trackProgressKey(
+  track: Pick<TrackPayload, "title" | "artist" | "listenUrl"> | { title?: string; artist?: string; listenUrl?: string },
+): string {
+  return `${track.listenUrl ?? ""}|${track.title ?? ""}|${track.artist ?? ""}`;
+}
+
 /**
- * Reconstruct the playhead from a stats.fm progress snapshot.
+ * stats.fm's `date` (`snapshotAt`) is the implied start of this play:
+ * at a fresh refresh, `date + progressMs` equals the fetch time. `progressMs`
+ * itself is already the playhead as of that refresh and then stays frozen
+ * until the next stats.fm update (~30s). Adding `(now - date)` onto
+ * `progressMs` therefore double-counts and the bar runs about 2x ahead.
  *
- * stats.fm's `progressMs` is taken at `snapshotAt` and is not a live playhead;
- * it often stays unchanged across polls until stats.fm refreshes it. The true
- * position is `progressMs + (now - snapshotAt)`. Pause and seek can therefore
- * lag until the next snapshot.
- *
- * `serverNow` is the server clock when the payload was built. Clock skew is
- * applied only when the payload looks fresh, so cache age is not mistaken
- * for skew. If the projected position is past the end while stats.fm still
- * reports isPlaying, the bar is clamped at the end and the track stays live.
+ * Use `date` as startedAt when it is at or before `receivedAt - progressMs`.
+ * Re-anchor from the latest progress only on a seek (progress far ahead of,
+ * or far behind, date-as-start).
  */
-export function playbackPosition(
-  track: Pick<
-    TrackPayload,
-    "live" | "progressMs" | "durationMs" | "isPlaying" | "snapshotAt" | "serverNow"
-  >,
+export function impliedStartedAt(
+  progressMs: number,
+  receivedAt: number,
+  snapshotAt: number | null,
+): number {
+  const fromProgress = receivedAt - progressMs;
+  if (snapshotAt == null || !Number.isFinite(snapshotAt)) return fromProgress;
+  const disagreement = progressMs - (receivedAt - snapshotAt);
+  // Progress ahead of date-as-start: a seek forward, or date is not the start.
+  if (disagreement > START_AGREE_MS) return fromProgress;
+  // Progress far behind a typical stats.fm refresh window: a seek backward.
+  if (disagreement < -45_000) return fromProgress;
+  return snapshotAt;
+}
+
+export type PlaybackTrack = Pick<
+  TrackPayload,
+  "live" | "progressMs" | "durationMs" | "isPlaying" | "snapshotAt" | "serverNow"
+> &
+  Partial<Pick<TrackPayload, "title" | "artist" | "listenUrl">>;
+
+export function resolvePlayback(
+  track: PlaybackTrack,
   clientNow: number,
   receivedAt: number = clientNow,
-): ProgressPosition | null {
+  prev: ProgressAnchor | null = null,
+): { position: ProgressPosition | null; anchor: ProgressAnchor | null } {
   if (!hasProgress(track) || track.progressMs == null || track.durationMs == null) {
-    return null;
+    return { position: null, anchor: null };
   }
 
+  const key = trackProgressKey(track);
+  const skew = estimateSkew(receivedAt, track.serverNow);
+  const adjustedNow = clientNow - skew;
+  const adjustedReceived = receivedAt - skew;
+  const candidate = impliedStartedAt(track.progressMs, adjustedReceived, track.snapshotAt);
+
+  let startedAt = candidate;
+  if (prev && prev.key === key) {
+    if (track.isPlaying && track.progressMs !== prev.progressMs) {
+      const freshStart = adjustedReceived - track.progressMs;
+      const jump = track.progressMs - (adjustedReceived - prev.startedAt);
+      if (jump < -BACKWARD_SLIP_MS && jump > -SEEK_BACK_MS) {
+        // Small rewind: keep the existing start so the bar does not jump back.
+        startedAt = prev.startedAt;
+      } else if (jump <= -SEEK_BACK_MS || jump > START_AGREE_MS) {
+        // A real seek: re-anchor from the new playhead.
+        startedAt = freshStart;
+      } else {
+        startedAt = prev.startedAt;
+      }
+    } else {
+      startedAt = prev.startedAt;
+    }
+  }
+
+  const anchor: ProgressAnchor = { key, startedAt, progressMs: track.progressMs };
   const durationMs = track.durationMs;
-  let positionMs = track.progressMs;
+  let positionMs = track.isPlaying ? Math.max(0, adjustedNow - startedAt) : track.progressMs;
+  positionMs = Math.max(0, positionMs);
+  const rawRatio = positionMs / durationMs;
+  const capped = rawRatio > BAR_CAP_RATIO;
+  const ratio = Math.min(rawRatio, BAR_CAP_RATIO);
+  const cappedMs = durationMs * BAR_CAP_RATIO;
+  return {
+    position: {
+      positionMs: Math.min(positionMs, cappedMs),
+      ratio,
+      stale: rawRatio >= 1,
+      capped,
+    },
+    anchor,
+  };
+}
 
-  if (track.isPlaying) {
-    const snapshotAt = track.snapshotAt ?? track.serverNow;
-    const adjustedNow = clientNow - estimateSkew(receivedAt, track.serverNow);
-    positionMs = track.progressMs + Math.max(0, adjustedNow - snapshotAt);
-  }
-
-  if (positionMs > durationMs + STALE_AFTER_MS) {
-    return { positionMs: durationMs, ratio: 1, stale: true };
-  }
-
-  positionMs = Math.min(durationMs, Math.max(0, positionMs));
-  return { positionMs, ratio: positionMs / durationMs, stale: false };
+export function playbackPosition(
+  track: PlaybackTrack,
+  clientNow: number,
+  receivedAt: number = clientNow,
+  prev: ProgressAnchor | null = null,
+): ProgressPosition | null {
+  return resolvePlayback(track, clientNow, receivedAt, prev).position;
 }
 
 function textOf(value: unknown): string {

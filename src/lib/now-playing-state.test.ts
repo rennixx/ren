@@ -119,7 +119,7 @@ describe("applyNowPlayingUpdate", () => {
   it("demotes after the projected end plus grace when a single null arrives", () => {
     const track = live({ progressMs: 300_000, durationMs: 336_133, snapshotAt: SNAP, serverNow: SNAP });
     const end = projectedEndMs(track);
-    assert.equal(end, SNAP + (336_133 - 300_000) + END_GRACE_MS);
+    assert.equal(end, SNAP + 336_133 + END_GRACE_MS);
     const state = applyNowPlayingUpdate(
       initialDisplayState(track),
       { type: "payload", payload: last({ serverNow: end! }) },
