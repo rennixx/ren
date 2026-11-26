@@ -7,6 +7,7 @@ import {
   parseCurrentStream,
   parseRecentStreams,
   parseTrack,
+  playbackPosition,
 } from "./now-playing";
 
 const NOW = Date.parse("2026-11-26T18:00:00Z");
@@ -51,7 +52,8 @@ describe("parseCurrentStream", () => {
       progressMs: 83000,
       durationMs: 237000,
       isPlaying: true,
-      fetchedAt: Date.parse("2026-11-26T17:59:30.000Z"),
+      snapshotAt: Date.parse("2026-11-26T17:59:30.000Z"),
+      serverNow: NOW,
     });
     assert.equal(hasProgress(track!), true);
   });
@@ -149,5 +151,83 @@ describe("helpers", () => {
     assert.equal(formatPlayedAgo(nowSec - 12 * 60, NOW), "12m ago");
     assert.equal(formatPlayedAgo(nowSec - 2 * 3600, NOW), "2h ago");
     assert.equal(formatPlayedAgo(nowSec - 3 * 86400, NOW), "3d ago");
+  });
+});
+
+
+describe("playbackPosition", () => {
+  const SNAP = Date.parse("2026-11-26T19:41:16.874Z");
+  const base = {
+    live: true,
+    progressMs: 87_479,
+    durationMs: 180_000,
+    isPlaying: true,
+    snapshotAt: SNAP,
+    serverNow: SNAP + 1_000,
+  };
+
+  it("adds elapsed time since the stats.fm snapshot", () => {
+    const clientNow = SNAP + 84_000;
+    const pos = playbackPosition(base, clientNow, clientNow);
+    assert.equal(pos?.stale, false);
+    assert.equal(pos?.positionMs, 87_479 + 84_000);
+    assert.equal(pos?.ratio, (87_479 + 84_000) / 180_000);
+  });
+
+  it("corrects a small clock skew from a fresh payload", () => {
+    const serverNow = SNAP + 1_000;
+    const receivedAt = serverNow + 250; // client 250ms ahead
+    const clientNow = receivedAt + 10_000;
+    const pos = playbackPosition({ ...base, serverNow }, clientNow, receivedAt);
+    // elapsed = (clientNow - skew) - snapshotAt = 11s
+    assert.equal(pos?.positionMs, 87_479 + 11_000);
+  });
+
+  it("does not treat cache age as clock skew", () => {
+    const serverNow = SNAP + 1_000;
+    const receivedAt = serverNow + 20_000; // 20s-old cached payload
+    const clientNow = receivedAt;
+    const pos = playbackPosition({ ...base, serverNow }, clientNow, receivedAt);
+    assert.equal(pos?.positionMs, 87_479 + 21_000);
+  });
+
+  it("does not advance when paused", () => {
+    const clientNow = SNAP + 60_000;
+    const pos = playbackPosition({ ...base, isPlaying: false }, clientNow, clientNow);
+    assert.equal(pos?.positionMs, 87_479);
+    assert.equal(pos?.stale, false);
+  });
+
+  it("clamps just past the end of the track", () => {
+    const clientNow = SNAP + (180_000 - 87_479) + 2_000;
+    const pos = playbackPosition(base, clientNow, clientNow);
+    assert.equal(pos?.positionMs, 180_000);
+    assert.equal(pos?.ratio, 1);
+    assert.equal(pos?.stale, false);
+  });
+
+  it("marks a snapshot more than 5s past the end as stale and holds the bar full", () => {
+    const clientNow = SNAP + (180_000 - 87_479) + 5_001;
+    const pos = playbackPosition(base, clientNow, clientNow);
+    assert.equal(pos?.positionMs, 180_000);
+    assert.equal(pos?.ratio, 1);
+    assert.equal(pos?.stale, true);
+  });
+
+  it("falls back to serverNow when snapshotAt is missing", () => {
+    const serverNow = SNAP + 5_000;
+    const clientNow = serverNow + 8_000;
+    const pos = playbackPosition(
+      { ...base, snapshotAt: null, serverNow },
+      clientNow,
+      clientNow,
+    );
+    assert.equal(pos?.positionMs, 87_479 + 8_000);
+  });
+
+  it("returns null without a usable progress or duration", () => {
+    assert.equal(playbackPosition({ ...base, live: false }, SNAP, SNAP), null);
+    assert.equal(playbackPosition({ ...base, progressMs: null }, SNAP, SNAP), null);
+    assert.equal(playbackPosition({ ...base, durationMs: 0 }, SNAP, SNAP), null);
   });
 });

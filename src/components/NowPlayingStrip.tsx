@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState } from "react";
-import { hasProgress, type TrackPayload } from "@/lib/now-playing";
+import { useEffect, useId, useMemo, useState, useSyncExternalStore } from "react";
+import { hasProgress, playbackPosition, type TrackPayload } from "@/lib/now-playing";
 
-const POLL_MS = 30_000;
+const POLL_MS = 10_000;
 const BAR_COUNT = 5;
 const SCALE_MIN = 0.27;
 const SCALE_MAX = 1;
@@ -74,25 +74,28 @@ function useReducedMotion(): boolean {
   return reduced;
 }
 
-function useProgressRatio(track: TrackPayload | null): number | null {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (!track || !hasProgress(track) || track.isPlaying === false) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const id = window.setInterval(() => setNow(Date.now()), 250);
-    return () => window.clearInterval(id);
-  }, [track]);
-
-  if (!track || !hasProgress(track) || track.progressMs == null || track.durationMs == null) {
-    return null;
+function subscribeNow(onChange: () => void) {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    return () => {};
   }
+  const id = window.setInterval(onChange, 250);
+  return () => window.clearInterval(id);
+}
 
-  const elapsed =
-    track.isPlaying === false
-      ? track.progressMs
-      : track.progressMs + (now - track.fetchedAt);
-  return Math.min(1, Math.max(0, elapsed / track.durationMs));
+function subscribeIdle() {
+  return () => {};
+}
+
+function useProgressRatio(track: TrackPayload | null, receivedAt: number | null): number | null {
+  const playing = Boolean(track && hasProgress(track) && track.isPlaying);
+  const serverNow = track?.serverNow ?? 0;
+  const now = useSyncExternalStore(
+    playing ? subscribeNow : subscribeIdle,
+    () => Date.now(),
+    () => serverNow,
+  );
+  if (!track) return null;
+  return playbackPosition(track, now, receivedAt ?? now)?.ratio ?? null;
 }
 
 function ProgressHairline({ ratio }: { ratio: number }) {
@@ -101,6 +104,7 @@ function ProgressHairline({ ratio }: { ratio: number }) {
     <div
       className="mt-1 h-0.5 w-full overflow-hidden rounded-full bg-line"
       aria-hidden="true"
+      data-progress={String(pct)}
     >
       <div className="h-full bg-gold" style={{ width: `${pct}%` }} />
     </div>
@@ -139,6 +143,7 @@ function Equaliser({ seed, playing }: { seed: string; playing: boolean }) {
 
 export function NowPlayingStrip({ initial }: { initial: TrackPayload | null }) {
   const [track, setTrack] = useState(initial);
+  const [receivedAt, setReceivedAt] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -150,11 +155,15 @@ export function NowPlayingStrip({ initial }: { initial: TrackPayload | null }) {
         if (cancelled) return;
         if (res.status === 204) {
           setTrack(null);
+          setReceivedAt(null);
           return;
         }
         if (!res.ok) return;
         const data = (await res.json()) as TrackPayload;
-        if (!cancelled) setTrack(data);
+        if (!cancelled) {
+          setTrack(data);
+          setReceivedAt(Date.now());
+        }
       } catch {
         // Keep the last good payload so a blip does not collapse the layout.
       }
@@ -194,7 +203,7 @@ export function NowPlayingStrip({ initial }: { initial: TrackPayload | null }) {
     };
   }, []);
 
-  const ratio = useProgressRatio(track);
+  const ratio = useProgressRatio(track, receivedAt);
 
   if (!track) return null;
 
