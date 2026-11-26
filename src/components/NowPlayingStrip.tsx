@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { hasProgress, resolvePlayback, type NowPlayingPayload, type ProgressAnchor, type TrackPayload } from "@/lib/now-playing";
 import { applyNowPlayingUpdate, initialDisplayState } from "@/lib/now-playing-state";
+import {
+  marqueeKeyframes,
+  marqueeTiming,
+  measureTitleOverflow,
+  shouldScrollTitle,
+} from "@/lib/title-marquee";
 
 const POLL_MS = 10_000;
 const BAR_COUNT = 5;
@@ -146,6 +152,84 @@ function Equaliser({ seed, playing }: { seed: string; playing: boolean }) {
   );
 }
 
+
+function useTitleOverflow(trackKey: string) {
+  const viewportRef = useRef<HTMLParagraphElement>(null);
+  const measureRef = useRef<HTMLSpanElement>(null);
+  const [overflow, setOverflow] = useState(0);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    const measure = measureRef.current;
+    if (!viewport || !measure) return;
+
+    const update = () => {
+      const next = measureTitleOverflow(measure.scrollWidth, viewport.clientWidth);
+      setOverflow((prev) => (Math.abs(prev - next) < 0.5 ? prev : next));
+    };
+
+    const ro = new ResizeObserver(update);
+    ro.observe(viewport);
+    ro.observe(measure);
+
+    void document.fonts?.ready.then(() => {
+      if (viewport.isConnected) update();
+    });
+
+    return () => ro.disconnect();
+  }, [trackKey]);
+
+  return { viewportRef, measureRef, overflow };
+}
+
+function TitleText({ title, artist }: { title: string; artist: string }) {
+  return (
+    <>
+      <span className="font-medium">{title}</span>
+      <span className="hidden text-muted min-[481px]:inline"> · {artist}</span>
+    </>
+  );
+}
+
+function ScrollingTitle({ title, artist }: { title: string; artist: string }) {
+  const reduced = useReducedMotion();
+  const trackKey = `${title}|${artist}`;
+  const { viewportRef, measureRef, overflow } = useTitleOverflow(trackKey);
+  const animId = `np-title-${useId().replace(/:/g, "")}`;
+  const scrolling = shouldScrollTitle(overflow, reduced);
+  const timing = scrolling ? marqueeTiming(overflow) : null;
+  const label = `${title} · ${artist}`;
+
+  return (
+    <p
+      ref={viewportRef}
+      className={`now-playing-title text-[12px] leading-4 text-ink min-[481px]:text-[13px] min-[481px]:leading-5${scrolling ? " is-scrolling" : " is-static"}`}
+      title={label}
+      aria-label={label}
+    >
+      <span ref={measureRef} className="now-playing-title-measure" aria-hidden="true">
+        <TitleText title={title} artist={artist} />
+      </span>
+      {scrolling && timing ? <style>{marqueeKeyframes(animId, overflow, timing)}</style> : null}
+      <span
+        className="now-playing-title-inner"
+        style={
+          scrolling && timing
+            ? {
+                animationName: animId,
+                animationDuration: `${timing.durationMs}ms`,
+                animationTimingFunction: "linear",
+                animationIterationCount: "infinite",
+              }
+            : undefined
+        }
+      >
+        <TitleText title={title} artist={artist} />
+      </span>
+    </p>
+  );
+}
+
 export function NowPlayingStrip({ initial }: { initial: NowPlayingPayload | null }) {
   const [state, setState] = useState(() => initialDisplayState(initial));
   const [receivedAt, setReceivedAt] = useState<number | null>(null);
@@ -223,7 +307,7 @@ export function NowPlayingStrip({ initial }: { initial: NowPlayingPayload | null
 
   return (
     <aside
-      className="mb-8 ml-auto w-fit max-w-[65vw] min-[481px]:mb-10 min-[481px]:max-w-[22rem] sm:mb-12 sm:max-w-[28rem]"
+      className="group mb-8 ml-auto w-fit max-w-[65vw] min-[481px]:mb-10 min-[481px]:max-w-[22rem] sm:mb-12 sm:max-w-[28rem]"
       aria-label={track.live ? "Now playing" : "Last played"}
     >
       <div className="flex items-start gap-2 min-[481px]:gap-2.5">
@@ -239,13 +323,7 @@ export function NowPlayingStrip({ initial }: { initial: NowPlayingPayload | null
           />
         ) : null}
         <div className="min-w-0">
-          <p
-            className="truncate text-[12px] leading-4 text-ink min-[481px]:text-[13px] min-[481px]:leading-5"
-            title={`${track.title} · ${track.artist}`}
-          >
-            <span className="font-medium">{track.title}</span>
-            <span className="hidden text-muted min-[481px]:inline"> · {track.artist}</span>
-          </p>
+          <ScrollingTitle title={track.title} artist={track.artist} />
           {ratio != null ? <ProgressHairline ratio={ratio} /> : null}
           <p className="mt-0.5 flex flex-nowrap items-center gap-x-2 text-[11px] leading-4 text-muted min-[481px]:mt-1 min-[481px]:gap-x-2.5 min-[481px]:text-[12px] min-[481px]:leading-5">
             {track.live ? (
