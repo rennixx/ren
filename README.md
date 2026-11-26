@@ -65,11 +65,9 @@ The intro and the commits live in `src/data/log.ts`. Contact links live in `src/
 
 ## Now playing
 
-A compact strip at the top right of the page shows what is playing, or what was last played. It reads the public stats.fm API and needs no key. Set this on the [Vercel](https://vercel.com) project as a server env var (not `NEXT_PUBLIC_`):
+A compact strip at the top right of the page shows what is playing, or what was last played. It reads the public stats.fm API and needs no key. It defaults to the public username `iicyren`. You can override that on the [Vercel](https://vercel.com) project with a server env var (not `NEXT_PUBLIC_`):
 
-- `STATSFM_USER` — your stats.fm username
-
-If it is missing, the strip is not rendered.
+- `STATSFM_USER` — stats.fm username (optional; defaults to `iicyren`)
 
 ## Local development
 

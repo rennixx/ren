@@ -54,7 +54,7 @@ async function withCover(track: TrackPayload): Promise<TrackPayload> {
 }
 
 export function statsFmUser(): string | null {
-  const user = process.env.STATSFM_USER?.trim();
+  const user = (process.env.STATSFM_USER || "iicyren").trim();
   if (!user || !USER_PATTERN.test(user)) return null;
   return user;
 }
