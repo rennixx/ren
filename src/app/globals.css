@@ -45,4 +45,42 @@
   html {
     scroll-behavior: auto;
   }
+
+  .now-playing-eq i {
+    animation: none !important;
+  }
+}
+
+.now-playing-eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 11px;
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.now-playing-eq > style {
+  display: none;
+}
+
+.now-playing-eq i {
+  display: block;
+  flex: 0 0 2px;
+  width: 2px;
+  height: 100%;
+  background: var(--color-gold);
+  transform-origin: bottom;
+}
+
+.now-playing-eq i.is-mint {
+  background: var(--color-mint);
+}
+
+@media (max-width: 480px) {
+  .now-playing-eq {
+    height: 9px;
+    width: auto;
+    gap: 1.5px;
+  }
 }

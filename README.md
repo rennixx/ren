@@ -22,9 +22,10 @@ Full-stack and AI engineer in Erbil, Iraq. The page is one screen: the latest co
 
 ## Features
 
+- **Now playing.** A small strip at the top right shows the current or last played track from stats.fm.
 - **Commit graph.** A gold line for main, and a mint branch for Mam Center that merges back.
 - **Keyboard.** Enter or Space expands a commit. Escape closes it. Links inside an open row stay in the tab order.
-- **Reduced motion.** The expand animation is skipped when it is requested.
+- **Reduced motion.** The expand animation is skipped when it is requested, and the now-playing equaliser is still.
 - **Mobile.** Hashes and the stack column hide, and the graph stays a narrow rail.
 
 ## Stack
@@ -46,17 +47,27 @@ src/
 │   ├── page.tsx            # Assembles the log
 │   └── globals.css         # Color tokens and focus styles
 ├── components/
+│   ├── NowPlaying.tsx      # stats.fm strip at the top right
 │   ├── HeadCommit.tsx      # git show HEAD
 │   ├── CommitGraph.tsx     # Expandable project rows
 │   ├── GraphRail.tsx       # Gold and mint graph lines
 │   ├── Remotes.tsx         # git remote -v
 │   ├── PageShell.tsx       # 980px column
 │   └── Prompt.tsx          # ren@icyren ~ (main) $
+├── lib/
+│   ├── now-playing.ts      # stats.fm payload parser
+│   └── get-now-playing.ts  # Server fetch
 └── data/
     └── log.ts              # Intro and commit list
 ```
 
 The intro and the commits live in `src/data/log.ts`. Contact links live in `src/components/Remotes.tsx`.
+
+## Now playing
+
+A compact strip at the top right of the page shows what is playing, or what was last played. It reads the public stats.fm API and needs no key. It defaults to the public username `iicyren`. You can override that on the [Vercel](https://vercel.com) project with a server env var (not `NEXT_PUBLIC_`):
+
+- `STATSFM_USER` — stats.fm username (optional; defaults to `iicyren`)
 
 ## Local development
 
