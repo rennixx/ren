@@ -1,13 +1,9 @@
 export const MARQUEE_SPEED_PX_PER_SEC = 35;
-export const MARQUEE_PAUSE_MS = 1500;
 export const MARQUEE_OVERFLOW_EPSILON_PX = 1;
 export const MARQUEE_GAP_EM = 2.75;
 
 export type MarqueeTiming = {
-  travelMs: number;
-  pauseMs: number;
   durationMs: number;
-  startHoldEnd: number;
 };
 
 /** Full-text width minus the visible viewport. Values within the epsilon count as a fit. */
@@ -42,32 +38,18 @@ export function gapPxFromEm(fontSizePx: number, gapEm: number = MARQUEE_GAP_EM):
   return fontSizePx * gapEm;
 }
 
+/** Duration of one continuous cycle at constant speed. No pause. */
 export function marqueeTiming(
   cycleWidthPx: number,
   speedPxPerSec: number = MARQUEE_SPEED_PX_PER_SEC,
-  pauseMs: number = MARQUEE_PAUSE_MS,
 ): MarqueeTiming {
   const speed = speedPxPerSec > 0 ? speedPxPerSec : MARQUEE_SPEED_PX_PER_SEC;
-  const pause = Math.max(0, pauseMs);
-  const travelMs = cycleWidthPx > 0 ? (cycleWidthPx / speed) * 1000 : 0;
-  const durationMs = travelMs + pause;
-  if (durationMs <= 0) {
-    return { travelMs, pauseMs: pause, durationMs: 0, startHoldEnd: 0 };
-  }
-  return {
-    travelMs,
-    pauseMs: pause,
-    durationMs,
-    startHoldEnd: pause / durationMs,
-  };
+  const durationMs = cycleWidthPx > 0 ? (cycleWidthPx / speed) * 1000 : 0;
+  return { durationMs };
 }
 
-/** One-direction loop: hold at the start, then translate by exactly one cycle. */
-export function marqueeKeyframes(name: string, cycleWidthPx: number, timing: MarqueeTiming): string {
+/** One-direction loop: translate by exactly one cycle with no hold. */
+export function marqueeKeyframes(name: string, cycleWidthPx: number): string {
   const dist = `${cycleWidthPx.toFixed(2)}px`;
-  if (timing.pauseMs <= 0 || timing.startHoldEnd <= 0) {
-    return `@keyframes ${name} { 0% { transform: translateX(0); } 100% { transform: translateX(-${dist}); } }`;
-  }
-  const holdStart = (timing.startHoldEnd * 100).toFixed(3);
-  return `@keyframes ${name} { 0%, ${holdStart}% { transform: translateX(0); } 100% { transform: translateX(-${dist}); } }`;
+  return `@keyframes ${name} { 0% { transform: translateX(0); } 100% { transform: translateX(-${dist}); } }`;
 }
