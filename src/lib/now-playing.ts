@@ -1,4 +1,7 @@
+export type PlaybackStatus = "live" | "paused" | "last" | "unknown";
+
 export type TrackPayload = {
+  status: "live" | "paused" | "last";
   live: boolean;
   title: string;
   artist: string;
@@ -11,6 +14,16 @@ export type TrackPayload = {
   snapshotAt: number | null;
   serverNow: number;
 };
+
+export type UnknownPayload = {
+  status: "unknown";
+  serverNow: number;
+};
+
+export type NowPlayingPayload = TrackPayload | UnknownPayload;
+
+/** A paused current-stream snapshot older than this is treated as last played. */
+export const PAUSED_MAX_AGE_MS = 10 * 60 * 1000;
 
 export function itunesArtworkUrl(url100: string): string {
   return url100.replace(/100x100bb(\.[a-z]+)$/i, "600x600bb$1");
@@ -69,7 +82,8 @@ function estimateSkew(receivedAt: number, serverNow: number): number {
  *
  * `serverNow` is the server clock when the payload was built. Clock skew is
  * applied only when the payload looks fresh, so cache age is not mistaken
- * for skew. Positions past `durationMs + 5s` are marked stale (bar held full).
+ * for skew. If the projected position is past the end while stats.fm still
+ * reports isPlaying, the bar is clamped at the end and the track stays live.
  */
 export function playbackPosition(
   track: Pick<
@@ -146,7 +160,7 @@ function durationOf(track: Record<string, unknown>): number | null {
 
 export function parseTrack(track: unknown): Omit<
   TrackPayload,
-  "live" | "playedAgo" | "progressMs" | "isPlaying" | "snapshotAt" | "serverNow"
+  "status" | "live" | "playedAgo" | "progressMs" | "isPlaying" | "snapshotAt" | "serverNow"
 > | null {
   const rec = asRecord(track);
   if (!rec) return null;
@@ -185,12 +199,14 @@ export function parseCurrentStream(data: unknown, nowMs = Date.now()): TrackPayl
     return Number.isFinite(t) ? t : null;
   })();
 
+  const isPlaying = item.isPlaying !== false;
   return {
     ...parsed,
+    status: isPlaying ? "live" : "paused",
     live: true,
     playedAgo: null,
     progressMs,
-    isPlaying: item.isPlaying !== false,
+    isPlaying,
     snapshotAt,
     serverNow: nowMs,
   };
@@ -213,6 +229,7 @@ export function parseRecentStreams(data: unknown, nowMs = Date.now()): TrackPayl
 
   return {
     ...parsed,
+    status: "last",
     live: false,
     playedAgo,
     progressMs: null,
@@ -220,4 +237,40 @@ export function parseRecentStreams(data: unknown, nowMs = Date.now()): TrackPayl
     snapshotAt: null,
     serverNow: nowMs,
   };
+}
+
+export type StatsFmFetch = { ok: true; data: unknown } | { ok: false };
+
+/**
+ * Decide what to show from a /streams/current result and a /streams/recent result.
+ *
+ * A current-stream error is "unknown", never last-played: falling back to recent
+ * on a failed live lookup is what made the strip flip while a track was playing.
+ * A successful current response with `item: null` is a confirmed idle state.
+ */
+export function resolveNowPlaying(
+  currentFetch: StatsFmFetch,
+  recentFetch: StatsFmFetch,
+  nowMs: number,
+): NowPlayingPayload {
+  if (!currentFetch.ok) {
+    return { status: "unknown", serverNow: nowMs };
+  }
+
+  const current = parseCurrentStream(currentFetch.data, nowMs);
+  if (current) {
+    if (current.status === "paused") {
+      const age = nowMs - (current.snapshotAt ?? current.serverNow);
+      if (age <= PAUSED_MAX_AGE_MS) return current;
+    } else {
+      return current;
+    }
+  }
+
+  if (!recentFetch.ok) {
+    return { status: "unknown", serverNow: nowMs };
+  }
+  const recent = parseRecentStreams(recentFetch.data, nowMs);
+  if (recent) return recent;
+  return { status: "unknown", serverNow: nowMs };
 }

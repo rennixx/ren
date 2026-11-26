@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useId, useMemo, useState, useSyncExternalStore } from "react";
-import { hasProgress, playbackPosition, type TrackPayload } from "@/lib/now-playing";
+import { hasProgress, playbackPosition, type NowPlayingPayload, type TrackPayload } from "@/lib/now-playing";
+import { applyNowPlayingUpdate, initialDisplayState } from "@/lib/now-playing-state";
 
 const POLL_MS = 10_000;
 const BAR_COUNT = 5;
@@ -141,9 +142,10 @@ function Equaliser({ seed, playing }: { seed: string; playing: boolean }) {
   );
 }
 
-export function NowPlayingStrip({ initial }: { initial: TrackPayload | null }) {
-  const [track, setTrack] = useState(initial);
+export function NowPlayingStrip({ initial }: { initial: NowPlayingPayload | null }) {
+  const [state, setState] = useState(() => initialDisplayState(initial));
   const [receivedAt, setReceivedAt] = useState<number | null>(null);
+  const track = state.track;
 
   useEffect(() => {
     let cancelled = false;
@@ -153,19 +155,17 @@ export function NowPlayingStrip({ initial }: { initial: TrackPayload | null }) {
       try {
         const res = await fetch("/api/now-playing", { cache: "no-store" });
         if (cancelled) return;
-        if (res.status === 204) {
-          setTrack(null);
-          setReceivedAt(null);
+        if (!res.ok) {
+          setState((prev) => applyNowPlayingUpdate(prev, { type: "error" }, Date.now()));
           return;
         }
-        if (!res.ok) return;
-        const data = (await res.json()) as TrackPayload;
-        if (!cancelled) {
-          setTrack(data);
-          setReceivedAt(Date.now());
-        }
+        const data = (await res.json()) as NowPlayingPayload;
+        if (cancelled) return;
+        const now = Date.now();
+        setState((prev) => applyNowPlayingUpdate(prev, { type: "payload", payload: data }, now));
+        if (data.status !== "unknown") setReceivedAt(now);
       } catch {
-        // Keep the last good payload so a blip does not collapse the layout.
+        setState((prev) => applyNowPlayingUpdate(prev, { type: "error" }, Date.now()));
       }
     }
 

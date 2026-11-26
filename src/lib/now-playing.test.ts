@@ -8,6 +8,7 @@ import {
   parseRecentStreams,
   parseTrack,
   playbackPosition,
+  resolveNowPlaying,
 } from "./now-playing";
 
 const NOW = Date.parse("2026-11-26T18:00:00Z");
@@ -43,6 +44,7 @@ describe("parseCurrentStream", () => {
       NOW,
     );
     assert.deepEqual(track, {
+      status: "live",
       live: true,
       title: "Life Is Good (feat. Drake)",
       artist: "Future, Drake",
@@ -97,6 +99,7 @@ describe("parseRecentStreams", () => {
       },
       NOW,
     );
+    assert.equal(track?.status, "last");
     assert.equal(track?.live, false);
     assert.equal(track?.playedAgo, "2h ago");
     assert.equal(track?.title, "Life Is Good (feat. Drake)");
@@ -229,5 +232,90 @@ describe("playbackPosition", () => {
     assert.equal(playbackPosition({ ...base, live: false }, SNAP, SNAP), null);
     assert.equal(playbackPosition({ ...base, progressMs: null }, SNAP, SNAP), null);
     assert.equal(playbackPosition({ ...base, durationMs: 0 }, SNAP, SNAP), null);
+  });
+});
+
+
+describe("parseCurrentStream paused", () => {
+  it("marks a current item with isPlaying false as paused, not last played", () => {
+    const track = parseCurrentStream(
+      {
+        item: {
+          date: "2026-11-26T17:59:30.000Z",
+          isPlaying: false,
+          progressMs: 83000,
+          track: lifeIsGoodTrack,
+        },
+      },
+      NOW,
+    );
+    assert.equal(track?.status, "paused");
+    assert.equal(track?.live, true);
+    assert.equal(track?.isPlaying, false);
+  });
+});
+
+describe("resolveNowPlaying", () => {
+  const liveBody = {
+    item: {
+      date: "2026-11-26T17:59:30.000Z",
+      isPlaying: true,
+      progressMs: 83000,
+      track: lifeIsGoodTrack,
+    },
+  };
+  const recentBody = {
+    items: [
+      {
+        platform: "SPOTIFY",
+        endTime: new Date(NOW - 3 * 60 * 1000).toISOString(),
+        track: { ...lifeIsGoodTrack, name: "Ambition For Cash", artists: [{ name: "Key Glock" }] },
+      },
+    ],
+  };
+
+  it("returns the live track when current succeeds", () => {
+    const payload = resolveNowPlaying({ ok: true, data: liveBody }, { ok: true, data: recentBody }, NOW);
+    assert.equal(payload.status, "live");
+    assert.equal("title" in payload && payload.title, "Life Is Good (feat. Drake)");
+  });
+
+  it("returns unknown on a current-stream error, never last played", () => {
+    const payload = resolveNowPlaying({ ok: false }, { ok: true, data: recentBody }, NOW);
+    assert.deepEqual(payload, { status: "unknown", serverNow: NOW });
+  });
+
+  it("returns last played only when current is a confirmed empty item", () => {
+    const payload = resolveNowPlaying({ ok: true, data: { item: null } }, { ok: true, data: recentBody }, NOW);
+    assert.equal(payload.status, "last");
+    assert.equal("title" in payload && payload.title, "Ambition For Cash");
+  });
+
+  it("keeps a recent pause as current, not last played", () => {
+    const paused = {
+      item: {
+        date: "2026-11-26T17:55:00.000Z",
+        isPlaying: false,
+        progressMs: 40000,
+        track: lifeIsGoodTrack,
+      },
+    };
+    const payload = resolveNowPlaying({ ok: true, data: paused }, { ok: true, data: recentBody }, NOW);
+    assert.equal(payload.status, "paused");
+    assert.equal("title" in payload && payload.title, "Life Is Good (feat. Drake)");
+  });
+
+  it("treats a pause older than 10 minutes as last played", () => {
+    const paused = {
+      item: {
+        date: "2026-11-26T17:40:00.000Z",
+        isPlaying: false,
+        progressMs: 40000,
+        track: lifeIsGoodTrack,
+      },
+    };
+    const payload = resolveNowPlaying({ ok: true, data: paused }, { ok: true, data: recentBody }, NOW);
+    assert.equal(payload.status, "last");
+    assert.equal("title" in payload && payload.title, "Ambition For Cash");
   });
 });

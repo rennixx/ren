@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test src/lib/now-playing.test.ts",
+    "test": "tsx --test src/lib/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
