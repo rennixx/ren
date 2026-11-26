@@ -1,9 +1,43 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { TrackPayload } from "@/lib/now-playing";
+import { hasProgress, type TrackPayload } from "@/lib/now-playing";
 
 const POLL_MS = 30_000;
+
+function useProgressRatio(track: TrackPayload | null): number | null {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!track || !hasProgress(track) || track.isPlaying === false) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const id = window.setInterval(() => setNow(Date.now()), 250);
+    return () => window.clearInterval(id);
+  }, [track]);
+
+  if (!track || !hasProgress(track) || track.progressMs == null || track.durationMs == null) {
+    return null;
+  }
+
+  const elapsed =
+    track.isPlaying === false
+      ? track.progressMs
+      : track.progressMs + (now - track.fetchedAt);
+  return Math.min(1, Math.max(0, elapsed / track.durationMs));
+}
+
+function ProgressHairline({ ratio }: { ratio: number }) {
+  const pct = Math.round(ratio * 1000) / 10;
+  return (
+    <div
+      className="mt-1 h-0.5 w-full overflow-hidden rounded-full bg-line"
+      aria-hidden="true"
+    >
+      <div className="h-full bg-gold" style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
 
 function Equaliser() {
   return (
@@ -74,6 +108,8 @@ export function NowPlayingStrip({ initial }: { initial: TrackPayload | null }) {
     };
   }, []);
 
+  const ratio = useProgressRatio(track);
+
   if (!track) return null;
 
   return (
@@ -83,7 +119,7 @@ export function NowPlayingStrip({ initial }: { initial: TrackPayload | null }) {
     >
       <div className="flex items-start gap-2 min-[481px]:gap-2.5">
         {track.coverUrl ? (
-          // External Last.fm / iTunes hosts vary, so a plain img is used on purpose.
+          // External stats.fm / iTunes / Spotify hosts vary, so a plain img is used on purpose.
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={track.coverUrl}
@@ -101,10 +137,11 @@ export function NowPlayingStrip({ initial }: { initial: TrackPayload | null }) {
             <span className="font-medium">{track.title}</span>
             <span className="hidden text-muted min-[481px]:inline"> · {track.artist}</span>
           </p>
+          {ratio != null ? <ProgressHairline ratio={ratio} /> : null}
           <p className="mt-0.5 flex flex-nowrap items-center gap-x-2 text-[11px] leading-4 text-muted min-[481px]:mt-1 min-[481px]:gap-x-2.5 min-[481px]:text-[12px] min-[481px]:leading-5">
             {track.live ? (
               <>
-                <Equaliser />
+                {ratio == null ? <Equaliser /> : null}
                 <span className="inline-flex rounded-full border border-mint/60 px-1.5 py-px text-[10px] leading-4 text-mint min-[481px]:px-2 min-[481px]:text-[11px] min-[481px]:leading-5">
                   live
                 </span>

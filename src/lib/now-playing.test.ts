@@ -2,151 +2,138 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   formatPlayedAgo,
-  isLastFmPlaceholder,
+  hasProgress,
   itunesArtworkUrl,
-  largestImage,
-  parseRecentTracks,
+  parseCurrentStream,
+  parseRecentStreams,
+  parseTrack,
 } from "./now-playing";
 
-const STAR = "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png";
-const COVER = "https://lastfm.freetls.fastly.net/i/u/300x300/realcover.jpg";
 const NOW = Date.parse("2026-11-26T18:00:00Z");
+const COVER =
+  "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/64/ce/3f/64ce3f2a-b523-8f83-46fc-ef70b6ea48ff/886448469704.jpg/768x768bb.jpg";
 
-function images(overrides: { extra?: string; star?: boolean } = {}) {
-  const extra = overrides.star ? STAR : (overrides.extra ?? COVER);
-  return [
-    { size: "small", "#text": extra.replace("300x300", "34s") },
-    { size: "medium", "#text": extra.replace("300x300", "64s") },
-    { size: "large", "#text": extra.replace("300x300", "174s") },
-    { size: "extralarge", "#text": extra },
-  ];
-}
+const lifeIsGoodTrack = {
+  albums: [{ id: 1, image: COVER, name: "High Off Life" }],
+  artists: [
+    { id: 2, name: "Future" },
+    { id: 3, name: "Drake" },
+  ],
+  durationMs: 237000,
+  explicit: true,
+  externalIds: { spotify: ["1K5KBOgreBi5fkEHunNZvC"], appleMusic: ["123"] },
+  id: 4242,
+  name: "Life Is Good (feat. Drake)",
+};
 
-function livePayload(extra?: Record<string, unknown>) {
-  return {
-    recenttracks: {
-      track: [
-        {
-          artist: { "#text": "Future" },
-          name: "Life Is Good (feat. Drake)",
-          url: "https://www.last.fm/music/Future/_/Life+Is+Good+(feat.+Drake)",
-          image: images(),
-          "@attr": { nowplaying: "true" },
-          ...extra,
+describe("parseCurrentStream", () => {
+  it("parses a now-playing track with progress", () => {
+    const track = parseCurrentStream(
+      {
+        item: {
+          date: "2026-11-26T17:59:30.000Z",
+          isPlaying: true,
+          progressMs: 83000,
+          deviceName: "ren's phone",
+          platform: "SPOTIFY",
+          track: lifeIsGoodTrack,
         },
-      ],
-    },
-  };
-}
-
-describe("parseRecentTracks", () => {
-  it("parses a now-playing track", () => {
-    const track = parseRecentTracks(livePayload(), NOW);
+      },
+      NOW,
+    );
     assert.deepEqual(track, {
       live: true,
       title: "Life Is Good (feat. Drake)",
-      artist: "Future",
+      artist: "Future, Drake",
       coverUrl: COVER,
-      listenUrl: "https://www.last.fm/music/Future/_/Life+Is+Good+(feat.+Drake)",
+      listenUrl: "https://open.spotify.com/track/1K5KBOgreBi5fkEHunNZvC",
       playedAgo: null,
+      progressMs: 83000,
+      durationMs: 237000,
+      isPlaying: true,
+      fetchedAt: Date.parse("2026-11-26T17:59:30.000Z"),
     });
+    assert.equal(hasProgress(track!), true);
   });
 
-  it("parses last played with a relative time", () => {
-    const twoHoursAgo = Math.floor(NOW / 1000) - 2 * 3600;
-    const data = {
-      recenttracks: {
-        track: [
-          {
-            artist: { mbid: "abc", "#text": "Future, Drake" },
-            name: "Life Is Good (feat. Drake)",
-            url: "https://www.last.fm/music/Future/_/Life+Is+Good+(feat.+Drake)",
-            image: images(),
-            date: { uts: String(twoHoursAgo), "#text": "26 Nov 2026, 16:00" },
-          },
-        ],
-      },
-    };
-    const track = parseRecentTracks(data, NOW);
-    assert.equal(track?.live, false);
-    assert.equal(track?.playedAgo, "2h ago");
-    assert.equal(track?.artist, "Future, Drake");
+  it("returns null when nothing is playing", () => {
+    assert.equal(parseCurrentStream({ item: null }, NOW), null);
+    assert.equal(parseCurrentStream({}, NOW), null);
+    assert.equal(parseCurrentStream(undefined, NOW), null);
   });
 
-  it("accepts a single track object instead of an array", () => {
-    const data = {
-      recenttracks: {
-        track: {
-          artist: "Future",
-          name: "Life Is Good (feat. Drake)",
-          url: "https://example.com/track",
-          image: images(),
-          "@attr": { nowplaying: true },
+  it("treats a current item without progress as live without a bar", () => {
+    const track = parseCurrentStream(
+      {
+        item: {
+          isPlaying: true,
+          platform: "SPOTIFY",
+          track: { ...lifeIsGoodTrack, durationMs: 237000 },
         },
       },
-    };
-    const track = parseRecentTracks(data, NOW);
+      NOW,
+    );
     assert.equal(track?.live, true);
-    assert.equal(track?.artist, "Future");
-    assert.equal(track?.listenUrl, "https://example.com/track");
-  });
-
-  it("returns null cover when art is missing", () => {
-    const track = parseRecentTracks(livePayload({ image: [] }), NOW);
-    assert.equal(track?.coverUrl, null);
-    assert.equal(track?.title, "Life Is Good (feat. Drake)");
-  });
-
-  it("treats the Last.fm star placeholder as missing art", () => {
-    const track = parseRecentTracks(livePayload({ image: images({ star: true }) }), NOW);
-    assert.equal(track?.coverUrl, null);
-  });
-
-  it("returns null for an empty response", () => {
-    assert.equal(parseRecentTracks(undefined, NOW), null);
-    assert.equal(parseRecentTracks({}, NOW), null);
-    assert.equal(parseRecentTracks({ recenttracks: { track: [] } }, NOW), null);
-    assert.equal(parseRecentTracks({ error: 6, message: "User not found" }, NOW), null);
-  });
-
-  it("returns null when title or artist is missing", () => {
-    assert.equal(
-      parseRecentTracks(
-        { recenttracks: { track: [{ name: "Only title", artist: "", image: [] }] } },
-        NOW,
-      ),
-      null,
-    );
-    assert.equal(
-      parseRecentTracks(
-        { recenttracks: { track: [{ artist: "Only artist", image: [] }] } },
-        NOW,
-      ),
-      null,
-    );
+    assert.equal(track?.progressMs, null);
+    assert.equal(hasProgress(track!), false);
   });
 });
 
-describe("largestImage", () => {
-  it("picks the highest size and skips placeholders", () => {
-    assert.equal(largestImage(images()), COVER);
-    assert.equal(largestImage(images({ star: true })), null);
-    assert.equal(
-      largestImage([
-        { size: "small", "#text": STAR },
-        { size: "mega", "#text": "https://cdn.example/mega.jpg" },
-      ]),
-      "https://cdn.example/mega.jpg",
+describe("parseRecentStreams", () => {
+  it("parses the most recent stream and a relative time", () => {
+    const twoHoursAgo = new Date(NOW - 2 * 3600 * 1000).toISOString();
+    const track = parseRecentStreams(
+      {
+        items: [
+          {
+            platform: "SPOTIFY",
+            endTime: twoHoursAgo,
+            durationMs: 237000,
+            track: lifeIsGoodTrack,
+          },
+        ],
+      },
+      NOW,
     );
+    assert.equal(track?.live, false);
+    assert.equal(track?.playedAgo, "2h ago");
+    assert.equal(track?.title, "Life Is Good (feat. Drake)");
+    assert.equal(track?.artist, "Future, Drake");
+    assert.equal(track?.listenUrl, "https://open.spotify.com/track/1K5KBOgreBi5fkEHunNZvC");
+    assert.equal(track?.progressMs, null);
+  });
+
+  it("returns null for an empty response", () => {
+    assert.equal(parseRecentStreams({ items: [] }, NOW), null);
+    assert.equal(parseRecentStreams({}, NOW), null);
+  });
+});
+
+describe("parseTrack", () => {
+  it("returns null cover when art is missing", () => {
+    const parsed = parseTrack({
+      ...lifeIsGoodTrack,
+      albums: [{ id: 1, name: "High Off Life", image: "" }],
+    });
+    assert.equal(parsed?.coverUrl, null);
+    assert.equal(parsed?.title, "Life Is Good (feat. Drake)");
+  });
+
+  it("falls back to a stats.fm track link without a Spotify id", () => {
+    const parsed = parseTrack({
+      ...lifeIsGoodTrack,
+      externalIds: { spotify: [], appleMusic: [] },
+    });
+    assert.equal(parsed?.listenUrl, "https://stats.fm/track/4242");
+  });
+
+  it("returns null when title or artist is missing", () => {
+    assert.equal(parseTrack({ ...lifeIsGoodTrack, name: "" }), null);
+    assert.equal(parseTrack({ ...lifeIsGoodTrack, artists: [] }), null);
   });
 });
 
 describe("helpers", () => {
-  it("detects the Last.fm placeholder", () => {
-    assert.equal(isLastFmPlaceholder(STAR), true);
-    assert.equal(isLastFmPlaceholder(COVER), false);
-  });
-
   it("upgrades iTunes artwork to 600px", () => {
     assert.equal(
       itunesArtworkUrl(

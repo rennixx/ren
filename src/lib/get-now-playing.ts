@@ -1,11 +1,13 @@
 import {
   itunesArtworkUrl,
-  parseRecentTracks,
+  parseCurrentStream,
+  parseRecentStreams,
   type TrackPayload,
 } from "@/lib/now-playing";
 
-const LASTFM_ENDPOINT = "https://ws.audioscrobbler.com/2.0/";
+const STATS_FM_ENDPOINT = "https://api.stats.fm/api/v1";
 const ITUNES_ENDPOINT = "https://itunes.apple.com/search";
+const USER_PATTERN = /^[A-Za-z0-9._-]+$/;
 
 async function lookupItunesArtwork(artist: string, title: string): Promise<string | null> {
   const url = `${ITUNES_ENDPOINT}?term=${encodeURIComponent(`${artist} ${title}`)}&entity=song&limit=5`;
@@ -35,31 +37,41 @@ async function lookupItunesArtwork(artist: string, title: string): Promise<strin
   }
 }
 
-export async function getNowPlaying(): Promise<TrackPayload | null> {
-  const apiKey = process.env.LASTFM_API_KEY;
-  const user = process.env.LASTFM_USER;
-  if (!apiKey || !user) return null;
-
-  const params = new URLSearchParams({
-    method: "user.getRecentTracks",
-    user,
-    api_key: apiKey,
-    format: "json",
-    limit: "1",
+async function statsFmGet(path: string): Promise<unknown | null> {
+  const res = await fetch(`${STATS_FM_ENDPOINT}${path}`, {
+    headers: { Accept: "application/json" },
+    next: { revalidate: 20 },
   });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+async function withCover(track: TrackPayload): Promise<TrackPayload> {
+  if (!track.coverUrl) {
+    track.coverUrl = await lookupItunesArtwork(track.artist, track.title);
+  }
+  return track;
+}
+
+export function statsFmUser(): string | null {
+  const user = process.env.STATSFM_USER?.trim();
+  if (!user || !USER_PATTERN.test(user)) return null;
+  return user;
+}
+
+export async function getNowPlaying(): Promise<TrackPayload | null> {
+  const user = statsFmUser();
+  if (!user) return null;
 
   try {
-    const res = await fetch(`${LASTFM_ENDPOINT}?${params.toString()}`, {
-      next: { revalidate: 20 },
-    });
-    if (!res.ok) return null;
-    const data: unknown = await res.json();
-    const track = parseRecentTracks(data);
-    if (!track) return null;
-    if (!track.coverUrl) {
-      track.coverUrl = await lookupItunesArtwork(track.artist, track.title);
-    }
-    return track;
+    const current = parseCurrentStream(await statsFmGet(`/users/${user}/streams/current`));
+    if (current) return withCover(current);
+
+    const recent = parseRecentStreams(
+      await statsFmGet(`/users/${user}/streams/recent?limit=1`),
+    );
+    if (!recent) return null;
+    return withCover(recent);
   } catch {
     return null;
   }

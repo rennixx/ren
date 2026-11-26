@@ -5,26 +5,11 @@ export type TrackPayload = {
   coverUrl: string | null;
   listenUrl: string;
   playedAgo: string | null;
+  progressMs: number | null;
+  durationMs: number | null;
+  isPlaying: boolean;
+  fetchedAt: number;
 };
-
-const LASTFM_STAR = "2a96cbd8b46e442fc41c2b86b821562f";
-
-type ImageEntry = {
-  size?: string;
-  "#text"?: string;
-};
-
-const IMAGE_RANK: Record<string, number> = {
-  small: 1,
-  medium: 2,
-  large: 3,
-  extralarge: 4,
-  mega: 5,
-};
-
-export function isLastFmPlaceholder(url: string): boolean {
-  return url.includes(LASTFM_STAR);
-}
 
 export function itunesArtworkUrl(url100: string): string {
   return url100.replace(/100x100bb(\.[a-z]+)$/i, "600x600bb$1");
@@ -42,82 +27,131 @@ export function formatPlayedAgo(utsSeconds: number, nowMs = Date.now()): string 
   });
 }
 
+export function hasProgress(track: TrackPayload): boolean {
+  return (
+    track.live &&
+    track.progressMs != null &&
+    Number.isFinite(track.progressMs) &&
+    track.durationMs != null &&
+    track.durationMs > 0
+  );
+}
+
 function textOf(value: unknown): string {
-  if (typeof value === "string") return value.trim();
-  if (value && typeof value === "object" && "#text" in value) {
-    const text = (value as { "#text"?: unknown })["#text"];
-    if (typeof text === "string") return text.trim();
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+}
+
+function artistNames(artists: unknown): string {
+  if (!Array.isArray(artists)) return "";
+  return artists
+    .map((artist) => textOf(asRecord(artist)?.name))
+    .filter(Boolean)
+    .join(", ");
+}
+
+function coverFromTrack(track: Record<string, unknown>): string | null {
+  const albums = track.albums;
+  if (!Array.isArray(albums) || albums.length === 0) return null;
+  const image = textOf(asRecord(albums[0])?.image);
+  return image || null;
+}
+
+function spotifyId(track: Record<string, unknown>): string | null {
+  const ids = asRecord(track.externalIds)?.spotify;
+  if (!Array.isArray(ids)) return null;
+  const id = ids.find((value) => typeof value === "string" && value.trim());
+  return typeof id === "string" ? id.trim() : null;
+}
+
+function listenUrlFor(track: Record<string, unknown>): string {
+  const id = spotifyId(track);
+  if (id) return `https://open.spotify.com/track/${id}`;
+  if (track.id != null && String(track.id).length > 0) {
+    return `https://stats.fm/track/${track.id}`;
   }
   return "";
 }
 
-function asTracks(track: unknown): Record<string, unknown>[] {
-  if (Array.isArray(track)) {
-    return track.filter((item): item is Record<string, unknown> => {
-      return Boolean(item) && typeof item === "object";
-    });
-  }
-  if (track && typeof track === "object") return [track as Record<string, unknown>];
-  return [];
+function durationOf(track: Record<string, unknown>): number | null {
+  const value = Number(track.durationMs);
+  return Number.isFinite(value) && value > 0 ? value : null;
 }
 
-export function largestImage(images: unknown): string | null {
-  if (!Array.isArray(images)) {
-    const single = textOf(images);
-    if (single && !isLastFmPlaceholder(single)) return single;
-    return null;
-  }
-
-  let best: { url: string; rank: number } | null = null;
-  for (const [index, entry] of (images as ImageEntry[]).entries()) {
-    const url = typeof entry?.["#text"] === "string" ? entry["#text"].trim() : "";
-    if (!url || isLastFmPlaceholder(url)) continue;
-    const rank = (entry.size && IMAGE_RANK[entry.size]) || index + 1;
-    if (!best || rank >= best.rank) best = { url, rank };
-  }
-  return best?.url ?? null;
-}
-
-function isNowPlaying(track: Record<string, unknown>): boolean {
-  const attr = track["@attr"];
-  if (!attr || typeof attr !== "object") return false;
-  const flag = (attr as { nowplaying?: unknown }).nowplaying;
-  return flag === "true" || flag === true;
-}
-
-export function parseRecentTracks(data: unknown, nowMs = Date.now()): TrackPayload | null {
-  if (!data || typeof data !== "object") return null;
-  const root = data as { recenttracks?: { track?: unknown }; error?: unknown };
-  if (root.error) return null;
-
-  const tracks = asTracks(root.recenttracks?.track);
-  const track = tracks[0];
-  if (!track) return null;
-
-  const title = textOf(track.name);
-  const artist = textOf(track.artist);
+export function parseTrack(track: unknown): Omit<
+  TrackPayload,
+  "live" | "playedAgo" | "progressMs" | "isPlaying" | "fetchedAt"
+> | null {
+  const rec = asRecord(track);
+  if (!rec) return null;
+  const title = textOf(rec.name);
+  const artist = artistNames(rec.artists);
   if (!title || !artist) return null;
-
-  const live = isNowPlaying(track);
-  let playedAgo: string | null = null;
-  if (!live) {
-    const date = track.date;
-    const uts =
-      date && typeof date === "object" && "uts" in date
-        ? Number((date as { uts?: unknown }).uts)
-        : NaN;
-    if (Number.isFinite(uts)) playedAgo = formatPlayedAgo(uts, nowMs);
-    else playedAgo = "recently";
-  }
-
-  const listenUrl = textOf(track.url);
-
   return {
-    live,
     title,
     artist,
-    coverUrl: largestImage(track.image),
-    listenUrl,
+    coverUrl: coverFromTrack(rec),
+    listenUrl: listenUrlFor(rec),
+    durationMs: durationOf(rec),
+  };
+}
+
+export function parseCurrentStream(data: unknown, nowMs = Date.now()): TrackPayload | null {
+  const root = asRecord(data);
+  if (!root) return null;
+  const item = asRecord(root.item);
+  if (!item) return null;
+  const parsed = parseTrack(item.track);
+  if (!parsed) return null;
+
+  const progressRaw = item.progressMs;
+  const progressMs =
+    progressRaw == null || progressRaw === ""
+      ? null
+      : Number.isFinite(Number(progressRaw))
+        ? Math.max(0, Number(progressRaw))
+        : null;
+
+  const fetchedAt = (() => {
+    if (item.date == null) return nowMs;
+    const t = new Date(item.date as string | number).getTime();
+    return Number.isFinite(t) ? t : nowMs;
+  })();
+
+  return {
+    ...parsed,
+    live: true,
+    playedAgo: null,
+    progressMs,
+    isPlaying: item.isPlaying !== false,
+    fetchedAt,
+  };
+}
+
+export function parseRecentStreams(data: unknown, nowMs = Date.now()): TrackPayload | null {
+  const root = asRecord(data);
+  if (!root) return null;
+  const items = Array.isArray(root.items) ? root.items : [];
+  const item = asRecord(items[0]);
+  if (!item) return null;
+  const parsed = parseTrack(item.track);
+  if (!parsed) return null;
+
+  let playedAgo = "recently";
+  if (item.endTime != null) {
+    const t = new Date(item.endTime as string | number).getTime();
+    if (Number.isFinite(t)) playedAgo = formatPlayedAgo(Math.floor(t / 1000), nowMs);
+  }
+
+  return {
+    ...parsed,
+    live: false,
     playedAgo,
+    progressMs: null,
+    isPlaying: false,
+    fetchedAt: nowMs,
   };
 }
