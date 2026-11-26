@@ -22,9 +22,10 @@ Full-stack and AI engineer in Erbil, Iraq. The page is one screen: the latest co
 
 ## Features
 
+- **Now playing.** A small strip at the top right shows the current or last played track from Last.fm.
 - **Commit graph.** A gold line for main, and a mint branch for Mam Center that merges back.
 - **Keyboard.** Enter or Space expands a commit. Escape closes it. Links inside an open row stay in the tab order.
-- **Reduced motion.** The expand animation is skipped when it is requested.
+- **Reduced motion.** The expand animation is skipped when it is requested, and the now-playing equaliser is still.
 - **Mobile.** Hashes and the stack column hide, and the graph stays a narrow rail.
 
 ## Stack
@@ -46,17 +47,30 @@ src/
 │   ├── page.tsx            # Assembles the log
 │   └── globals.css         # Color tokens and focus styles
 ├── components/
+│   ├── NowPlaying.tsx      # Last.fm strip at the top right
 │   ├── HeadCommit.tsx      # git show HEAD
 │   ├── CommitGraph.tsx     # Expandable project rows
 │   ├── GraphRail.tsx       # Gold and mint graph lines
 │   ├── Remotes.tsx         # git remote -v
 │   ├── PageShell.tsx       # 980px column
 │   └── Prompt.tsx          # ren@icyren ~ (main) $
+├── lib/
+│   ├── now-playing.ts      # Last.fm payload parser
+│   └── get-now-playing.ts  # Server fetch
 └── data/
     └── log.ts              # Intro and commit list
 ```
 
 The intro and the commits live in `src/data/log.ts`. Contact links live in `src/components/Remotes.tsx`.
+
+## Now playing
+
+A compact strip at the top right of the page shows what is playing, or what was last played. It reads from Last.fm. Set these on the [Vercel](https://vercel.com) project as server env vars (not `NEXT_PUBLIC_`):
+
+- `LASTFM_API_KEY`
+- `LASTFM_USER`
+
+If they are missing, the strip is not rendered.
 
 ## Local development
 

@@ -45,4 +45,64 @@
   html {
     scroll-behavior: auto;
   }
+
+  .now-playing-eq i {
+    animation: none;
+  }
+}
+
+.now-playing-eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 11px;
+  width: 14px;
+}
+
+.now-playing-eq i {
+  display: block;
+  width: 2px;
+  background: var(--color-gold);
+  transform-origin: bottom;
+  animation: now-playing-eq 0.9s ease-in-out infinite alternate;
+}
+
+.now-playing-eq i:nth-child(1) {
+  height: 4px;
+  animation-duration: 0.72s;
+}
+
+.now-playing-eq i:nth-child(2) {
+  height: 11px;
+  animation-duration: 0.94s;
+  animation-delay: -0.2s;
+  background: var(--color-mint);
+}
+
+.now-playing-eq i:nth-child(3) {
+  height: 7px;
+  animation-duration: 0.8s;
+  animation-delay: -0.45s;
+}
+
+.now-playing-eq i:nth-child(4) {
+  height: 10px;
+  animation-duration: 1.05s;
+  animation-delay: -0.1s;
+}
+
+.now-playing-eq i:nth-child(5) {
+  height: 5px;
+  animation-duration: 0.86s;
+  animation-delay: -0.3s;
+  background: var(--color-mint);
+}
+
+@keyframes now-playing-eq {
+  from {
+    transform: scaleY(0.35);
+  }
+  to {
+    transform: scaleY(1);
+  }
 }
