@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   MARQUEE_GAP_EM,
-  MARQUEE_PAUSE_MS,
   MARQUEE_SPEED_PX_PER_SEC,
   gapPxFromEm,
   marqueeCycleWidth,
@@ -60,46 +59,30 @@ describe("marqueeCycleWidth", () => {
 });
 
 describe("marqueeTiming", () => {
-  it("uses ~35 px/s travel and a 1.5s pause at the start of each cycle", () => {
+  it("uses ~35 px/s with no pause, so duration is only the travel time", () => {
     const cycle = 350;
     const timing = marqueeTiming(cycle);
-    const expectedTravel = (cycle / MARQUEE_SPEED_PX_PER_SEC) * 1000;
-    assert.equal(timing.travelMs, expectedTravel);
-    assert.equal(timing.pauseMs, MARQUEE_PAUSE_MS);
-    assert.equal(timing.durationMs, expectedTravel + MARQUEE_PAUSE_MS);
-    assert.equal(timing.startHoldEnd, MARQUEE_PAUSE_MS / timing.durationMs);
+    assert.equal(timing.durationMs, (cycle / MARQUEE_SPEED_PX_PER_SEC) * 1000);
+    assert.equal(timing.durationMs, 10000);
     assert.ok(MARQUEE_SPEED_PX_PER_SEC >= 30 && MARQUEE_SPEED_PX_PER_SEC <= 40);
-    assert.ok(MARQUEE_PAUSE_MS >= 1500 && MARQUEE_PAUSE_MS <= 2000);
+    assert.equal("pauseMs" in timing, false);
+    assert.equal("startHoldEnd" in timing, false);
   });
 
   it("does not schedule travel when the cycle width is 0", () => {
-    const timing = marqueeTiming(0);
-    assert.equal(timing.travelMs, 0);
-    assert.equal(timing.durationMs, MARQUEE_PAUSE_MS);
-    assert.equal(timing.startHoldEnd, 1);
+    assert.equal(marqueeTiming(0).durationMs, 0);
   });
 });
 
 describe("marqueeKeyframes", () => {
-  it("loops one cycle left and holds only at the start, never reversing", () => {
-    const cycle = 350;
-    const timing = marqueeTiming(cycle);
-    const css = marqueeKeyframes("np-title-0", cycle, timing);
-    // 350px at 35 px/s = 10s travel; 1.5s start pause → 11.5s cycle (13.043%).
+  it("loops one cycle left at constant speed with no hold and no reverse", () => {
+    const css = marqueeKeyframes("np-title-0", 350);
     assert.equal(
       css,
-      "@keyframes np-title-0 { 0%, 13.043% { transform: translateX(0); } 100% { transform: translateX(-350.00px); } }",
+      "@keyframes np-title-0 { 0% { transform: translateX(0); } 100% { transform: translateX(-350.00px); } }",
     );
-    assert.equal(timing.durationMs, 11500);
-    assert.doesNotMatch(css, /translateX\(0\)\}.*100%/);
+    assert.doesNotMatch(css, /0%,/);
+    assert.doesNotMatch(css, /100% \{ transform: translateX\(0\)/);
     assert.equal((css.match(/translateX/g) ?? []).length, 2);
-  });
-
-  it("omits the start hold when the pause is 0", () => {
-    const timing = marqueeTiming(175, 35, 0);
-    assert.equal(
-      marqueeKeyframes("np-title-0", 175, timing),
-      "@keyframes np-title-0 { 0% { transform: translateX(0); } 100% { transform: translateX(-175.00px); } }",
-    );
   });
 });

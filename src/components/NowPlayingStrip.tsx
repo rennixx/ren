@@ -217,7 +217,7 @@ function ScrollingTitle({ title, artist }: { title: string; artist: string }) {
       <span ref={measureRef} className="now-playing-title-measure" aria-hidden="true">
         <TitleText title={title} artist={artist} />
       </span>
-      {scrolling && timing ? <style>{marqueeKeyframes(animId, cycleWidth, timing)}</style> : null}
+      {scrolling && timing ? <style>{marqueeKeyframes(animId, cycleWidth)}</style> : null}
       <span
         className="now-playing-title-inner"
         style={
