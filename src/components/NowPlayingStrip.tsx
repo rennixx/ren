@@ -78,10 +78,10 @@ export function NowPlayingStrip({ initial }: { initial: TrackPayload | null }) {
 
   return (
     <aside
-      className="mb-10 ml-auto w-fit max-w-full sm:mb-12"
+      className="mb-8 ml-auto w-fit max-w-[65vw] min-[481px]:mb-10 min-[481px]:max-w-[22rem] sm:mb-12 sm:max-w-[28rem]"
       aria-label={track.live ? "Now playing" : "Last played"}
     >
-      <div className="flex max-w-[22rem] items-start gap-2.5 sm:max-w-[28rem]">
+      <div className="flex items-start gap-2 min-[481px]:gap-2.5">
         {track.coverUrl ? (
           // External Last.fm / iTunes hosts vary, so a plain img is used on purpose.
           // eslint-disable-next-line @next/next/no-img-element
@@ -90,31 +90,34 @@ export function NowPlayingStrip({ initial }: { initial: TrackPayload | null }) {
             alt=""
             width={44}
             height={44}
-            className="size-11 shrink-0 rounded-[2px] object-cover object-top"
+            className="size-8 shrink-0 rounded-[2px] object-cover object-top min-[481px]:size-11"
           />
         ) : null}
         <div className="min-w-0">
-          <p className="text-[13px] leading-5 text-ink">
+          <p
+            className="truncate text-[12px] leading-4 text-ink min-[481px]:text-[13px] min-[481px]:leading-5"
+            title={`${track.title} · ${track.artist}`}
+          >
             <span className="font-medium">{track.title}</span>
-            <span className="text-muted"> · {track.artist}</span>
+            <span className="hidden text-muted min-[481px]:inline"> · {track.artist}</span>
           </p>
-          <p className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12px] leading-5 text-muted">
+          <p className="mt-0.5 flex flex-nowrap items-center gap-x-2 text-[11px] leading-4 text-muted min-[481px]:mt-1 min-[481px]:gap-x-2.5 min-[481px]:text-[12px] min-[481px]:leading-5">
             {track.live ? (
               <>
                 <Equaliser />
-                <span className="inline-flex rounded-full border border-mint/60 px-2 py-px text-[11px] leading-5 text-mint">
+                <span className="inline-flex rounded-full border border-mint/60 px-1.5 py-px text-[10px] leading-4 text-mint min-[481px]:px-2 min-[481px]:text-[11px] min-[481px]:leading-5">
                   live
                 </span>
               </>
             ) : (
-              <span>Last played · {track.playedAgo}</span>
+              <span className="whitespace-nowrap">Last played · {track.playedAgo}</span>
             )}
             {track.listenUrl ? (
               <a
                 href={track.listenUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-ink underline decoration-line underline-offset-4 hover:text-gold hover:decoration-gold"
+                className="shrink-0 text-ink underline decoration-line underline-offset-4 hover:text-gold hover:decoration-gold"
               >
                 listen
               </a>
