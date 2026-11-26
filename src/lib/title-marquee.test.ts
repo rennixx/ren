@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  MARQUEE_GAP_EM,
   MARQUEE_PAUSE_MS,
   MARQUEE_SPEED_PX_PER_SEC,
+  gapPxFromEm,
+  marqueeCycleWidth,
   marqueeKeyframes,
   marqueeTiming,
   measureTitleOverflow,
@@ -41,45 +44,62 @@ describe("shouldScrollTitle", () => {
   });
 });
 
+describe("marqueeCycleWidth", () => {
+  it("adds the gap to the text width", () => {
+    assert.equal(marqueeCycleWidth(406, 35.75), 441.75);
+    assert.equal(gapPxFromEm(13), 13 * MARQUEE_GAP_EM);
+    assert.ok(MARQUEE_GAP_EM >= 2.5 && MARQUEE_GAP_EM <= 3);
+  });
+
+  it("returns 0 without a usable text width", () => {
+    assert.equal(marqueeCycleWidth(0, 35), 0);
+    assert.equal(marqueeCycleWidth(Number.NaN, 35), 0);
+    assert.equal(marqueeCycleWidth(406, Number.NaN), 0);
+    assert.equal(marqueeCycleWidth(406, -8), 406);
+  });
+});
+
 describe("marqueeTiming", () => {
-  it("uses ~35 px/s travel and a 1.75s pause at each end", () => {
-    const overflow = 140;
-    const timing = marqueeTiming(overflow);
-    const expectedTravel = (overflow / MARQUEE_SPEED_PX_PER_SEC) * 1000;
+  it("uses ~35 px/s travel and a 1.5s pause at the start of each cycle", () => {
+    const cycle = 350;
+    const timing = marqueeTiming(cycle);
+    const expectedTravel = (cycle / MARQUEE_SPEED_PX_PER_SEC) * 1000;
     assert.equal(timing.travelMs, expectedTravel);
     assert.equal(timing.pauseMs, MARQUEE_PAUSE_MS);
-    assert.equal(timing.durationMs, 2 * expectedTravel + 2 * MARQUEE_PAUSE_MS);
-    assert.ok(expectedTravel / overflow === 1000 / 35);
+    assert.equal(timing.durationMs, expectedTravel + MARQUEE_PAUSE_MS);
+    assert.equal(timing.startHoldEnd, MARQUEE_PAUSE_MS / timing.durationMs);
     assert.ok(MARQUEE_SPEED_PX_PER_SEC >= 30 && MARQUEE_SPEED_PX_PER_SEC <= 40);
     assert.ok(MARQUEE_PAUSE_MS >= 1500 && MARQUEE_PAUSE_MS <= 2000);
   });
 
-  it("places hold stops so the title rests at each end before reversing", () => {
-    const timing = marqueeTiming(140);
-    assert.equal(timing.startHoldEnd, timing.pauseMs / timing.durationMs);
-    assert.equal(timing.endHoldStart, (timing.pauseMs + timing.travelMs) / timing.durationMs);
-    assert.equal(timing.endHoldEnd, (2 * timing.pauseMs + timing.travelMs) / timing.durationMs);
-    assert.ok(timing.startHoldEnd < timing.endHoldStart);
-    assert.ok(timing.endHoldStart < timing.endHoldEnd);
-    assert.ok(timing.endHoldEnd < 1);
-  });
-
-  it("does not schedule travel when the title fits", () => {
+  it("does not schedule travel when the cycle width is 0", () => {
     const timing = marqueeTiming(0);
     assert.equal(timing.travelMs, 0);
-    assert.equal(timing.durationMs, 2 * MARQUEE_PAUSE_MS);
+    assert.equal(timing.durationMs, MARQUEE_PAUSE_MS);
+    assert.equal(timing.startHoldEnd, 1);
   });
 });
 
 describe("marqueeKeyframes", () => {
-  it("ping-pongs by the measured overflow and holds at both ends", () => {
-    const timing = marqueeTiming(87.5);
-    const css = marqueeKeyframes("np-title-0", 87.5, timing);
-    // 87.5px at 35 px/s = 2.5s travel; 1.75s pauses → 8.5s cycle (20.588 / 50 / 70.588).
+  it("loops one cycle left and holds only at the start, never reversing", () => {
+    const cycle = 350;
+    const timing = marqueeTiming(cycle);
+    const css = marqueeKeyframes("np-title-0", cycle, timing);
+    // 350px at 35 px/s = 10s travel; 1.5s start pause → 11.5s cycle (13.043%).
     assert.equal(
       css,
-      "@keyframes np-title-0 { 0%, 20.588% { transform: translateX(0); } 50.000%, 70.588% { transform: translateX(-87.50px); } 100% { transform: translateX(0); } }",
+      "@keyframes np-title-0 { 0%, 13.043% { transform: translateX(0); } 100% { transform: translateX(-350.00px); } }",
     );
-    assert.equal(timing.durationMs, 8500);
+    assert.equal(timing.durationMs, 11500);
+    assert.doesNotMatch(css, /translateX\(0\)\}.*100%/);
+    assert.equal((css.match(/translateX/g) ?? []).length, 2);
+  });
+
+  it("omits the start hold when the pause is 0", () => {
+    const timing = marqueeTiming(175, 35, 0);
+    assert.equal(
+      marqueeKeyframes("np-title-0", 175, timing),
+      "@keyframes np-title-0 { 0% { transform: translateX(0); } 100% { transform: translateX(-175.00px); } }",
+    );
   });
 });
