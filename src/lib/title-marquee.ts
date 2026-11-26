@@ -1,14 +1,13 @@
 export const MARQUEE_SPEED_PX_PER_SEC = 35;
-export const MARQUEE_PAUSE_MS = 1750;
+export const MARQUEE_PAUSE_MS = 1500;
 export const MARQUEE_OVERFLOW_EPSILON_PX = 1;
+export const MARQUEE_GAP_EM = 2.75;
 
 export type MarqueeTiming = {
   travelMs: number;
   pauseMs: number;
   durationMs: number;
   startHoldEnd: number;
-  endHoldStart: number;
-  endHoldEnd: number;
 };
 
 /** Full-text width minus the visible viewport. Values within the epsilon count as a fit. */
@@ -28,39 +27,47 @@ export function shouldScrollTitle(overflowPx: number, reducedMotion: boolean): b
   return overflowPx > 0 && !reducedMotion;
 }
 
+/** Distance of one loop: the first copy plus the gap before the duplicate. */
+export function marqueeCycleWidth(textWidth: number, gapPx: number): number {
+  if (!Number.isFinite(textWidth) || !Number.isFinite(gapPx) || textWidth <= 0) {
+    return 0;
+  }
+  return textWidth + Math.max(0, gapPx);
+}
+
+export function gapPxFromEm(fontSizePx: number, gapEm: number = MARQUEE_GAP_EM): number {
+  if (!Number.isFinite(fontSizePx) || fontSizePx <= 0 || !Number.isFinite(gapEm) || gapEm < 0) {
+    return 0;
+  }
+  return fontSizePx * gapEm;
+}
+
 export function marqueeTiming(
-  overflowPx: number,
+  cycleWidthPx: number,
   speedPxPerSec: number = MARQUEE_SPEED_PX_PER_SEC,
   pauseMs: number = MARQUEE_PAUSE_MS,
 ): MarqueeTiming {
   const speed = speedPxPerSec > 0 ? speedPxPerSec : MARQUEE_SPEED_PX_PER_SEC;
   const pause = Math.max(0, pauseMs);
-  const travelMs = overflowPx > 0 ? (overflowPx / speed) * 1000 : 0;
-  const durationMs = 2 * travelMs + 2 * pause;
+  const travelMs = cycleWidthPx > 0 ? (cycleWidthPx / speed) * 1000 : 0;
+  const durationMs = travelMs + pause;
   if (durationMs <= 0) {
-    return {
-      travelMs,
-      pauseMs: pause,
-      durationMs: 0,
-      startHoldEnd: 0,
-      endHoldStart: 0.5,
-      endHoldEnd: 0.5,
-    };
+    return { travelMs, pauseMs: pause, durationMs: 0, startHoldEnd: 0 };
   }
   return {
     travelMs,
     pauseMs: pause,
     durationMs,
     startHoldEnd: pause / durationMs,
-    endHoldStart: (pause + travelMs) / durationMs,
-    endHoldEnd: (2 * pause + travelMs) / durationMs,
   };
 }
 
-export function marqueeKeyframes(name: string, overflowPx: number, timing: MarqueeTiming): string {
-  const dist = `${overflowPx.toFixed(2)}px`;
+/** One-direction loop: hold at the start, then translate by exactly one cycle. */
+export function marqueeKeyframes(name: string, cycleWidthPx: number, timing: MarqueeTiming): string {
+  const dist = `${cycleWidthPx.toFixed(2)}px`;
+  if (timing.pauseMs <= 0 || timing.startHoldEnd <= 0) {
+    return `@keyframes ${name} { 0% { transform: translateX(0); } 100% { transform: translateX(-${dist}); } }`;
+  }
   const holdStart = (timing.startHoldEnd * 100).toFixed(3);
-  const holdEndFrom = (timing.endHoldStart * 100).toFixed(3);
-  const holdEndTo = (timing.endHoldEnd * 100).toFixed(3);
-  return `@keyframes ${name} { 0%, ${holdStart}% { transform: translateX(0); } ${holdEndFrom}%, ${holdEndTo}% { transform: translateX(-${dist}); } 100% { transform: translateX(0); } }`;
+  return `@keyframes ${name} { 0%, ${holdStart}% { transform: translateX(0); } 100% { transform: translateX(-${dist}); } }`;
 }

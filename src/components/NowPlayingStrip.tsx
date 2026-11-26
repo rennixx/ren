@@ -156,7 +156,10 @@ function Equaliser({ seed, playing }: { seed: string; playing: boolean }) {
 function useTitleOverflow(trackKey: string) {
   const viewportRef = useRef<HTMLParagraphElement>(null);
   const measureRef = useRef<HTMLSpanElement>(null);
+  const cycleRef = useRef<HTMLSpanElement>(null);
   const [overflow, setOverflow] = useState(0);
+  const [cycleWidth, setCycleWidth] = useState(0);
+  const measureCycle = overflow > 0;
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -164,22 +167,26 @@ function useTitleOverflow(trackKey: string) {
     if (!viewport || !measure) return;
 
     const update = () => {
-      const next = measureTitleOverflow(measure.scrollWidth, viewport.clientWidth);
-      setOverflow((prev) => (Math.abs(prev - next) < 0.5 ? prev : next));
+      const nextOverflow = measureTitleOverflow(measure.scrollWidth, viewport.clientWidth);
+      setOverflow((prev) => (Math.abs(prev - nextOverflow) < 0.5 ? prev : nextOverflow));
+      const cycle = cycleRef.current;
+      const nextCycle = cycle ? cycle.getBoundingClientRect().width : 0;
+      setCycleWidth((prev) => (Math.abs(prev - nextCycle) < 0.5 ? prev : nextCycle));
     };
 
     const ro = new ResizeObserver(update);
     ro.observe(viewport);
     ro.observe(measure);
+    if (cycleRef.current) ro.observe(cycleRef.current);
 
     void document.fonts?.ready.then(() => {
       if (viewport.isConnected) update();
     });
 
     return () => ro.disconnect();
-  }, [trackKey]);
+  }, [trackKey, measureCycle]);
 
-  return { viewportRef, measureRef, overflow };
+  return { viewportRef, measureRef, cycleRef, overflow, cycleWidth };
 }
 
 function TitleText({ title, artist }: { title: string; artist: string }) {
@@ -194,10 +201,10 @@ function TitleText({ title, artist }: { title: string; artist: string }) {
 function ScrollingTitle({ title, artist }: { title: string; artist: string }) {
   const reduced = useReducedMotion();
   const trackKey = `${title}|${artist}`;
-  const { viewportRef, measureRef, overflow } = useTitleOverflow(trackKey);
+  const { viewportRef, measureRef, cycleRef, overflow, cycleWidth } = useTitleOverflow(trackKey);
   const animId = `np-title-${useId().replace(/:/g, "")}`;
   const scrolling = shouldScrollTitle(overflow, reduced);
-  const timing = scrolling ? marqueeTiming(overflow) : null;
+  const timing = scrolling && cycleWidth > 0 ? marqueeTiming(cycleWidth) : null;
   const label = `${title} · ${artist}`;
 
   return (
@@ -210,7 +217,7 @@ function ScrollingTitle({ title, artist }: { title: string; artist: string }) {
       <span ref={measureRef} className="now-playing-title-measure" aria-hidden="true">
         <TitleText title={title} artist={artist} />
       </span>
-      {scrolling && timing ? <style>{marqueeKeyframes(animId, overflow, timing)}</style> : null}
+      {scrolling && timing ? <style>{marqueeKeyframes(animId, cycleWidth, timing)}</style> : null}
       <span
         className="now-playing-title-inner"
         style={
@@ -224,7 +231,23 @@ function ScrollingTitle({ title, artist }: { title: string; artist: string }) {
             : undefined
         }
       >
-        <TitleText title={title} artist={artist} />
+        {scrolling ? (
+          <>
+            <span ref={cycleRef} className="now-playing-title-cycle">
+              <span className="now-playing-title-copy">
+                <TitleText title={title} artist={artist} />
+              </span>
+              <span className="now-playing-title-gap" aria-hidden="true">
+                ·
+              </span>
+            </span>
+            <span className="now-playing-title-copy" aria-hidden="true">
+              <TitleText title={title} artist={artist} />
+            </span>
+          </>
+        ) : (
+          <TitleText title={title} artist={artist} />
+        )}
       </span>
     </p>
   );

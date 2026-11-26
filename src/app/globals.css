@@ -140,11 +140,32 @@
 }
 
 .now-playing-title.is-scrolling .now-playing-title-inner {
-  display: inline-block;
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
   overflow: visible;
   max-width: none;
   text-overflow: clip;
   will-change: transform;
+}
+
+.now-playing-title-cycle,
+.now-playing-title-copy {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.now-playing-title-gap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75em;
+  flex: 0 0 2.75em;
+  color: var(--color-muted);
+  pointer-events: none;
 }
 
 .group:hover .now-playing-title.is-scrolling .now-playing-title-inner,
